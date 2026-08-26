@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spider-Hero: Web of the City 3D</title>
+    <title>Spider-Hero 3D: Remastered</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-        body { overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
         
-        /* UI Overlay */
+        /* HUD Top-Left */
         #hud {
             position: absolute;
             top: 20px;
             left: 20px;
             color: #fff;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
             pointer-events: none;
+            z-index: 10;
         }
         .hud-card {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(8px);
+            background: rgba(10, 15, 30, 0.85);
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 12px 18px;
+            padding: 14px 20px;
             border-radius: 12px;
-            margin-bottom: 10px;
-            min-width: 220px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            min-width: 230px;
         }
         .hud-val { font-size: 20px; font-weight: bold; color: #fbbf24; }
         .hud-hp { color: #ef4444; }
@@ -36,67 +36,94 @@
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255, 255, 255, 0.8);
+            width: 22px;
+            height: 22px;
+            border: 2px dashed rgba(255, 255, 255, 0.6);
             border-radius: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
-            transition: all 0.1s ease;
+            transition: all 0.15s ease;
+            z-index: 10;
         }
-        #crosshair.valid-target { border-color: #38bdf8; background: rgba(56, 189, 248, 0.3); transform: translate(-50%, -50%) scale(1.3); }
+        #crosshair.valid-target {
+            border: 2px solid #38bdf8;
+            background: rgba(56, 189, 248, 0.25);
+            transform: translate(-50%, -50%) scale(1.4);
+            box-shadow: 0 0 12px #38bdf8;
+        }
 
-        /* Crime Mission Notification */
+        /* Combat Prompt */
+        #combat-indicator {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(239, 68, 68, 0.9);
+            border: 2px solid #fff;
+            color: #fff;
+            font-weight: 900;
+            font-size: 15px;
+            padding: 8px 18px;
+            border-radius: 20px;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+            animation: bounce 0.4s infinite alternate;
+        }
+        @keyframes bounce {
+            from { transform: translate(-50%, -50%) scale(1); }
+            to { transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        /* Mission Notification */
         #crime-alert {
             position: absolute;
             top: 25px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(220, 38, 38, 0.85);
-            border: 1px solid #f87171;
+            background: rgba(220, 38, 38, 0.95);
+            border: 2px solid #fca5a5;
             padding: 10px 24px;
             border-radius: 30px;
             color: white;
             font-weight: bold;
             font-size: 15px;
-            letter-spacing: 0.5px;
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.7);
             display: none;
             pointer-events: none;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: translateX(-50%) scale(1); }
-            50% { transform: translateX(-50%) scale(1.05); }
+            z-index: 10;
         }
 
-        /* Controls Help */
+        /* Guide Card */
         #controls-card {
             position: absolute;
             bottom: 20px;
             left: 20px;
-            background: rgba(15, 23, 42, 0.7);
+            background: rgba(10, 15, 30, 0.85);
             color: #cbd5e1;
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-size: 12px;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 13px;
             line-height: 1.6;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.12);
             pointer-events: none;
+            z-index: 10;
         }
-        #controls-card b { color: #fff; }
+        #controls-card b { color: #38bdf8; }
 
-        /* Suit Upgrade Shop Modal */
+        /* Shop Overlay */
         #shop-modal {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(15, 23, 42, 0.95);
+            background: rgba(15, 23, 42, 0.96);
             border: 2px solid #3b82f6;
             border-radius: 16px;
             padding: 24px;
-            width: 420px;
+            width: 440px;
+            max-width: 90vw;
             color: #fff;
             display: none;
             box-shadow: 0 0 35px rgba(59, 130, 246, 0.5);
@@ -106,7 +133,7 @@
         .suit-item {
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 12px;
+            padding: 12px 16px;
             border-radius: 10px;
             margin-bottom: 10px;
             display: flex;
@@ -126,19 +153,20 @@
         .suit-btn:hover { background: #1d4ed8; }
         .suit-btn.equipped { background: #10b981; cursor: default; }
 
-        /* Action Indicators */
-        #status-prompt {
+        #action-msg {
             position: absolute;
             bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.6);
-            color: #facc15;
-            font-size: 14px;
-            padding: 6px 16px;
+            background: rgba(0,0,0,0.8);
+            color: #38bdf8;
+            font-size: 15px;
+            font-weight: bold;
+            padding: 8px 22px;
             border-radius: 20px;
             pointer-events: none;
             display: none;
+            z-index: 10;
         }
     </style>
 </head>
@@ -146,26 +174,27 @@
 
 <div id="canvas-container"></div>
 <div id="crosshair"></div>
+<div id="combat-indicator">⚡ PRESS 'F' OR CLICK TO ATTACK!</div>
 
 <div id="hud">
     <div class="hud-card">
         <div>Health: <span id="val-hp" class="hud-val hud-hp">100 / 100</span></div>
-        <div>Coins: <span id="val-coins" class="hud-val">0</span> 🪙</div>
-        <div>Equipped: <span id="val-suit" class="hud-val hud-suit">Classic Suit</span></div>
+        <div>Coins: <span id="val-coins" class="hud-val">100</span> 🪙</div>
+        <div>Suit: <span id="val-suit" class="hud-val hud-suit">Advanced Hero</span></div>
     </div>
 </div>
 
-<div id="crime-alert">🚨 CRIME ALERT: Defeat thugs in the alley! [<span id="thug-count">3</span> left]</div>
-<div id="status-prompt"></div>
+<div id="crime-alert">🚨 CRIME IN PROGRESS: Eliminate Thugs! [<span id="thug-count">3</span> left]</div>
+<div id="action-msg"></div>
 
 <div id="controls-card">
-    <b>Controls:</b><br>
-    • <b>W, A, S, D</b> : Move / Wall Climb<br>
-    • <b>SPACE</b> : Jump / Release Swing<br>
-    • <b>E (Hold) or Right-Click</b> : Web Swing<br>
-    • <b>F or Left-Click</b> : Web Strike / Melee Attack<br>
-    • <b>U</b> : Open Suit Upgrade Shop<br>
-    • <b>Mouse Look</b> : Click canvas to lock camera
+    <b>Controls & Action Guide:</b><br>
+    • <b>W, A, S, D</b> : Walk & Wall Crawl<br>
+    • <b>SPACE</b> : Jump / Launch off Wall or Swing<br>
+    • <b>Hold E / Right-Click</b> : Shoot Web & Swing<br>
+    • <b>F / Left-Click</b> : Attack / Web Strike<br>
+    • <b>U</b> : Suit Upgrades Shop<br>
+    • <b>Click Screen</b> : Lock Mouse / Look Around
 </div>
 
 <div id="shop-modal">
@@ -174,87 +203,120 @@
     <p style="text-align: center; margin-top: 15px; font-size: 12px; color: #94a3b8;">Press <b>U</b> or <b>ESC</b> to close</p>
 </div>
 
-<!-- Three.js CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
-// --- GAME STATE ---
+// --- GLOBAL GAME STATE ---
 const state = {
     coins: 100,
     hp: 100,
     maxHp: 100,
     equippedSuit: 'classic',
     isSwinging: false,
-    swingPoint: null,
-    swingDistance: 0,
+    swingAnchor: new THREE.Vector3(),
+    swingRadius: 0,
     isClimbing: false,
-    shopOpen: false
+    climbNormal: new THREE.Vector3(),
+    shopOpen: false,
+    attackAnim: 0
 };
 
-// --- SUIT DATA ---
+// --- SUITS CONFIGURATION ---
 const SUITS = {
-    classic: { name: 'Classic Suit', cost: 0, owned: true, color: 0xc92a2a, accent: 0x1d4ed8, speed: 1.0, damage: 25 },
-    symbiote: { name: 'Symbiote Suit', cost: 150, owned: false, color: 0x111827, accent: 0xf8fafc, speed: 1.25, damage: 45 },
-    iron: { name: 'Iron Spider', cost: 300, owned: false, color: 0xb91c1c, accent: 0xf59e0b, speed: 1.35, damage: 60 },
-    suit2099: { name: 'Spider-Man 2099', cost: 500, owned: false, color: 0x1e3a8a, accent: 0xef4444, speed: 1.5, damage: 80 }
+    classic: { name: 'Advanced Hero', cost: 0, owned: true, prim: 0xd92525, sec: 0x1d4ed8, emissive: 0xffffff, speed: 1.0, damage: 35 },
+    symbiote: { name: 'Shadow Symbiote', cost: 150, owned: false, prim: 0x111827, sec: 0x374151, emissive: 0x93c5fd, speed: 1.3, damage: 55 },
+    iron: { name: 'Iron Armor MK-I', cost: 300, owned: false, prim: 0x991b1b, sec: 0xf59e0b, emissive: 0xfef08a, speed: 1.45, damage: 75 },
+    suit2099: { name: 'Cyber 2099', cost: 500, owned: false, prim: 0x1e3a8a, sec: 0xef4444, emissive: 0x38bdf8, speed: 1.6, damage: 100 }
 };
 
-// --- INITIALIZE THREE.JS SCENE ---
+// --- SCENE, CAMERA, RENDERER ---
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
-scene.fog = new THREE.FogExp2(0x87ceeb, 0.007);
+scene.background = new THREE.Color(0xa0c4e2);
+scene.fog = new THREE.FogExp2(0xa0c4e2, 0.005);
 
-const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 800);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
 container.appendChild(renderer.domElement);
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.7);
+scene.add(hemiLight);
 
-const sunLight = new THREE.DirectionalLight(0xfffaed, 0.9);
-sunLight.position.set(100, 200, 100);
+const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.2);
+sunLight.position.set(120, 220, 80);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 0.5;
-sunLight.shadow.camera.far = 400;
-const d = 150;
-sunLight.shadow.camera.left = -d;
-sunLight.shadow.camera.right = d;
-sunLight.shadow.camera.top = d;
-sunLight.shadow.camera.bottom = -d;
+sunLight.shadow.camera.near = 10;
+sunLight.shadow.camera.far = 450;
+const shadowRange = 160;
+sunLight.shadow.camera.left = -shadowRange;
+sunLight.shadow.camera.right = shadowRange;
+sunLight.shadow.camera.top = shadowRange;
+sunLight.shadow.camera.bottom = -shadowRange;
 scene.add(sunLight);
 
-// --- CITY ENVIRONMENT ---
-const citySize = 14;
-const blockSize = 32;
-const buildings = [];
-const streetObjects = [];
+// --- PROCEDURAL TEXTURES (Smooth Windows & Asphalts) ---
+function createFacadeTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, 256, 256);
+    
+    // Windows grid
+    ctx.fillStyle = '#93c5fd';
+    for(let y = 16; y < 256; y += 36) {
+        for(let x = 16; x < 256; x += 36) {
+            ctx.fillStyle = Math.random() > 0.3 ? '#bae6fd' : '#1e293b';
+            ctx.fillRect(x, y, 22, 22);
+        }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
 
-// Ground
-const groundGeo = new THREE.PlaneGeometry(citySize * blockSize * 1.5, citySize * blockSize * 1.5);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x222629, roughness: 0.8 });
+const buildingTex = createFacadeTexture();
+
+// --- PROCEDURAL CITY GENERATION ---
+const buildings = [];
+const cityDim = 12;
+const spacing = 38;
+
+// Ground plane
+const groundGeo = new THREE.PlaneGeometry(cityDim * spacing * 2, cityDim * spacing * 2);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x181e29, roughness: 0.85 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// Procedural City Generator
-const buildingPalette = [0x334155, 0x475569, 0x1e293b, 0x64748b, 0x0f172a];
-for (let x = -citySize / 2; x < citySize / 2; x++) {
-    for (let z = -citySize / 2; z < citySize / 2; z++) {
-        if (Math.random() > 0.3) {
-            const h = 25 + Math.random() * 80;
-            const w = blockSize * 0.7;
-            const bGeo = new THREE.BoxGeometry(w, h, w);
-            const bColor = buildingPalette[Math.floor(Math.random() * buildingPalette.length)];
-            const bMat = new THREE.MeshStandardMaterial({ color: bColor, roughness: 0.3, metalness: 0.2 });
-            const building = new THREE.Mesh(bGeo, bMat);
-            building.position.set(x * blockSize, h / 2, z * blockSize);
+for (let x = -cityDim / 2; x < cityDim / 2; x++) {
+    for (let z = -cityDim / 2; z < cityDim / 2; z++) {
+        if (Math.abs(x) <= 1 && Math.abs(z) <= 1) continue; // Open center plaza
+        if (Math.random() > 0.35) {
+            const h = 40 + Math.random() * 90;
+            const w = spacing * 0.72;
+            const texClone = buildingTex.clone();
+            texClone.repeat.set(2, Math.floor(h / 10));
+            texClone.needsUpdate = true;
+
+            const bMat = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff,
+                map: texClone,
+                roughness: 0.35, 
+                metalness: 0.25 
+            });
+            const building = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), bMat);
+            building.position.set(x * spacing, h / 2, z * spacing);
             building.castShadow = true;
             building.receiveShadow = true;
             scene.add(building);
@@ -263,178 +325,215 @@ for (let x = -citySize / 2; x < citySize / 2; x++) {
     }
 }
 
-// --- SPIDER-MAN CHARACTER ---
+// --- SPIDER-MAN CHARACTER RIG ---
 const playerGroup = new THREE.Group();
-playerGroup.position.set(0, 5, 0);
+playerGroup.position.set(0, 2, 0);
 scene.add(playerGroup);
 
-// Character Rigging with meshes
-const bodyMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.color, roughness: 0.5 });
-const accentMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.accent, roughness: 0.5 });
+// Suit Materials
+const primMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.prim, roughness: 0.4 });
+const secMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.sec, roughness: 0.4 });
+const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.7 });
 
-const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.45), bodyMat);
-torso.position.y = 1.25;
-torso.castShadow = true;
-playerGroup.add(torso);
+// Torso / Chest
+const chest = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.8, 0.4), primMat);
+chest.position.y = 1.35;
+chest.castShadow = true;
+playerGroup.add(chest);
 
-const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), bodyMat);
+const waist = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.4, 0.36), secMat);
+waist.position.y = 0.9;
+waist.castShadow = true;
+playerGroup.add(waist);
+
+// Head & Eyes
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), primMat);
 head.position.y = 1.95;
+head.scale.set(0.9, 1.1, 1.0);
 head.castShadow = true;
 playerGroup.add(head);
 
-// Mask Eyes
-const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.05), eyeMat);
-eyeL.position.set(0.12, 1.98, 0.3);
-eyeL.rotation.z = -0.15;
+const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.04), eyeMat);
+eyeL.position.set(0.1, 1.98, 0.26);
+eyeL.rotation.z = -0.2;
 const eyeR = eyeL.clone();
-eyeR.position.x = -0.12;
-eyeR.rotation.z = 0.15;
+eyeR.position.x = -0.1;
+eyeR.rotation.z = 0.2;
 playerGroup.add(eyeL, eyeR);
 
-// Limbs
-const limbGeo = new THREE.BoxGeometry(0.24, 0.8, 0.25);
-const leftArm = new THREE.Mesh(limbGeo, accentMat);
-leftArm.position.set(0.55, 1.2, 0);
-const rightArm = new THREE.Mesh(limbGeo, accentMat);
-rightArm.position.set(-0.55, 1.2, 0);
-const leftLeg = new THREE.Mesh(limbGeo, accentMat);
-leftLeg.position.set(0.24, 0.4, 0);
-const rightLeg = new THREE.Mesh(limbGeo, accentMat);
-rightLeg.position.set(-0.24, 0.4, 0);
+// Arms (Hierarchical for smooth punching)
+const leftArmGroup = new THREE.Group();
+leftArmGroup.position.set(0.5, 1.6, 0);
+const lArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.22), secMat);
+lArmMesh.position.y = -0.35;
+leftArmGroup.add(lArmMesh);
+playerGroup.add(leftArmGroup);
 
-playerGroup.add(leftArm, rightArm, leftLeg, rightLeg);
+const rightArmGroup = new THREE.Group();
+rightArmGroup.position.set(-0.5, 1.6, 0);
+const rArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.22), secMat);
+rArmMesh.position.y = -0.35;
+rightArmGroup.add(rArmMesh);
+playerGroup.add(rightArmGroup);
 
-// Web Visual Line
-const webLineMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
-const webLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-const webLine = new THREE.Line(webLineGeo, webLineMat);
-webLine.visible = false;
-scene.add(webLine);
+// Legs
+const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.8, 0.25), secMat);
+leftLeg.position.set(0.22, 0.4, 0);
+const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.8, 0.25), secMat);
+rightLeg.position.set(-0.22, 0.4, 0);
+playerGroup.add(leftLeg, rightLeg);
 
-// --- PLAYER PHYSICS & STATE ---
-const playerVel = new THREE.Vector3();
-let isGrounded = false;
-let cameraPitch = 0;
-let cameraYaw = 0;
-const keys = {};
+// --- SMOOTH WEB SYSTEM (3D Curved Tube) ---
+const webCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()
+]);
+const webGeo = new THREE.TubeGeometry(webCurve, 16, 0.04, 6, false);
+const webMat = new THREE.MeshStandardMaterial({ 
+    color: 0xffffff, 
+    emissive: 0x93c5fd, 
+    emissiveIntensity: 0.6,
+    roughness: 0.1 
+});
+const webMesh = new THREE.Mesh(webGeo, webMat);
+webMesh.visible = false;
+scene.add(webMesh);
 
-// --- CRIMES / ENEMIES SYSTEM ---
+function updateWebGeometry(start, end) {
+    // Generate curved web shape
+    const mid = start.clone().lerp(end, 0.5);
+    mid.y -= 1.8; // Sagging pendulum curve effect
+    webCurve.points = [start, mid, end];
+    webMesh.geometry.dispose();
+    webMesh.geometry = new THREE.TubeGeometry(webCurve, 16, 0.045, 6, false);
+}
+
+// --- ENEMIES & COMBAT SYSTEM ---
 const enemies = [];
 let activeCrime = false;
-let crimeLocation = new THREE.Vector3();
 
 function spawnCrime() {
-    if (activeCrime) return;
+    if (activeCrime || buildings.length === 0) return;
     const b = buildings[Math.floor(Math.random() * buildings.length)];
-    crimeLocation.set(b.position.x + (Math.random() - 0.5) * 15, 1, b.position.z + (Math.random() - 0.5) * 15);
+    const center = new THREE.Vector3(b.position.x + (Math.random() > 0.5 ? 20 : -20), 0.9, b.position.z);
     
-    // Spawn 3 Thugs
-    const count = 3;
-    for (let i = 0; i < count; i++) {
-        const thugGroup = new THREE.Group();
-        const thugBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.5), new THREE.MeshStandardMaterial({ color: 0x374151 }));
-        thugBody.position.y = 0.9;
-        thugGroup.add(thugBody);
-        thugGroup.position.copy(crimeLocation).add(new THREE.Vector3((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6));
-        scene.add(thugGroup);
-
-        enemies.push({
-            mesh: thugGroup,
-            hp: 60,
-            maxHp: 60,
-            speed: 3 + Math.random() * 2
-        });
+    for (let i = 0; i < 3; i++) {
+        const tGroup = new THREE.Group();
+        const tMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.5), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+        tMesh.position.y = 0.9;
+        tMesh.castShadow = true;
+        tGroup.add(tMesh);
+        tGroup.position.copy(center).add(new THREE.Vector3((Math.random() - 0.5) * 8, 0, (Math.random() - 0.5) * 8));
+        scene.add(tGroup);
+        enemies.push({ mesh: tGroup, hp: 70 });
     }
-
     activeCrime = true;
     document.getElementById('crime-alert').style.display = 'block';
     document.getElementById('thug-count').innerText = enemies.length;
 }
+setTimeout(spawnCrime, 2500);
 
-// First crime after 3 seconds
-setTimeout(spawnCrime, 3000);
+// --- INPUT & CONTROLS ---
+const keys = {};
+let cameraYaw = 0;
+let cameraPitch = 0;
+const playerVel = new THREE.Vector3();
+let isGrounded = false;
 
-// --- INPUT LISTENERS ---
-window.addEventListener('keydown', (e) => {
+window.addEventListener('keydown', e => {
     keys[e.code] = true;
     if (e.code === 'KeyE') startSwing();
-    if (e.code === 'KeyF') attack();
+    if (e.code === 'KeyF') triggerAttack();
     if (e.code === 'KeyU') toggleShop();
 });
-window.addEventListener('keyup', (e) => {
+window.addEventListener('keyup', e => {
     keys[e.code] = false;
     if (e.code === 'KeyE') releaseSwing();
 });
-window.addEventListener('mousedown', (e) => {
+window.addEventListener('mousedown', e => {
     if (document.pointerLockElement !== document.body) {
         document.body.requestPointerLock();
         return;
     }
-    if (e.button === 0) attack();
+    if (e.button === 0) triggerAttack();
     if (e.button === 2) startSwing();
 });
-window.addEventListener('mouseup', (e) => {
+window.addEventListener('mouseup', e => {
     if (e.button === 2) releaseSwing();
 });
 window.addEventListener('contextmenu', e => e.preventDefault());
 
-window.addEventListener('mousemove', (e) => {
+window.addEventListener('mousemove', e => {
     if (document.pointerLockElement === document.body) {
         cameraYaw -= e.movementX * 0.0025;
         cameraPitch -= e.movementY * 0.0025;
-        cameraPitch = Math.max(-1.2, Math.min(1.2, cameraPitch));
+        cameraPitch = Math.max(-1.1, Math.min(1.1, cameraPitch));
     }
 });
 
-// Raycaster for swinging & crosshair target detection
-const raycaster = new THREE.Raycaster();
-function getAimTarget() {
-    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-    const hits = raycaster.intersectObjects(buildings);
-    return (hits.length > 0 && hits[0].distance < 110) ? hits[0] : null;
+// Raycaster for aiming webs & walls
+const aimRay = new THREE.Raycaster();
+function getTargetBuilding() {
+    aimRay.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const hits = aimRay.intersectObjects(buildings);
+    return hits.length > 0 && hits[0].distance < 140 ? hits[0] : null;
 }
 
-// --- SWING & COMBAT ACTIONS ---
+// Raycast surrounding walls for accurate climbing
+function getTouchingWall() {
+    const directions = [
+        new THREE.Vector3(0, 0, -1),
+        new THREE.Vector3(0, 0, 1),
+        new THREE.Vector3(-1, 0, 0),
+        new THREE.Vector3(1, 0, 0)
+    ];
+    for (let dir of directions) {
+        const ray = new THREE.Raycaster(playerGroup.position.clone().add(new THREE.Vector3(0, 1, 0)), dir, 0, 1.4);
+        const hits = ray.intersectObjects(buildings);
+        if (hits.length > 0) {
+            return hits[0];
+        }
+    }
+    return null;
+}
+
+// --- CORE ACTIONS ---
 function startSwing() {
     if (state.isSwinging) return;
-    const hit = getAimTarget();
-    if (hit && hit.point.y > playerGroup.position.y + 3) {
+    const target = getTargetBuilding();
+    if (target && target.point.y > playerGroup.position.y + 4) {
         state.isSwinging = true;
-        state.swingPoint = hit.point;
-        state.swingDistance = playerGroup.position.distanceTo(hit.point);
-        webLine.visible = true;
+        state.swingAnchor.copy(target.point);
+        state.swingRadius = playerGroup.position.distanceTo(target.point);
+        webMesh.visible = true;
     }
 }
 
 function releaseSwing() {
     if (state.isSwinging) {
         state.isSwinging = false;
-        webLine.visible = false;
+        webMesh.visible = false;
         // Boost forward on release
-        const fwd = new THREE.Vector3(0, 0.4, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
-        playerVel.add(fwd.multiplyScalar(15));
+        const forward = new THREE.Vector3(0, 0.4, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+        playerVel.add(forward.multiplyScalar(22));
     }
 }
 
-function attack() {
-    const activeSuit = SUITS[state.equippedSuit];
-    let hitAny = false;
-    
-    // Check melee reach
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i];
-        const dist = playerGroup.position.distanceTo(enemy.mesh.position);
-        if (dist < 5.0) {
-            enemy.hp -= activeSuit.damage;
-            hitAny = true;
-            
-            // Knockback
-            const knock = enemy.mesh.position.clone().sub(playerGroup.position).normalize().multiplyScalar(6);
-            enemy.mesh.position.add(knock);
+function triggerAttack() {
+    state.attackAnim = 1.0; // Trigger punch animation
+    const suit = SUITS[state.equippedSuit];
 
-            if (enemy.hp <= 0) {
-                scene.remove(enemy.mesh);
+    // Find closest thug within range
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        const dist = playerGroup.position.distanceTo(e.mesh.position);
+        if (dist < 6.0) {
+            e.hp -= suit.damage;
+            // Knockback impulse
+            const knock = e.mesh.position.clone().sub(playerGroup.position).normalize().multiplyScalar(10);
+            e.mesh.position.add(knock);
+
+            if (e.hp <= 0) {
+                scene.remove(e.mesh);
                 enemies.splice(i, 1);
                 state.coins += 50;
                 updateHud();
@@ -448,19 +547,19 @@ function attack() {
         state.coins += 150;
         updateHud();
         document.getElementById('crime-alert').style.display = 'none';
-        showStatus('Crime Cleared! Bonus: +150 Coins');
-        setTimeout(spawnCrime, 8000);
+        showMsg('Mission Complete: +150 Coins Awarded!');
+        setTimeout(spawnCrime, 6000);
     }
 }
 
-function showStatus(text) {
-    const el = document.getElementById('status-prompt');
+function showMsg(text) {
+    const el = document.getElementById('action-msg');
     el.innerText = text;
     el.style.display = 'block';
     setTimeout(() => { el.style.display = 'none'; }, 2500);
 }
 
-// --- SHOP & SUIT UPGRADE SYSTEM ---
+// --- SUIT SHOP SYSTEM ---
 function toggleShop() {
     state.shopOpen = !state.shopOpen;
     document.getElementById('shop-modal').style.display = state.shopOpen ? 'block' : 'none';
@@ -473,47 +572,37 @@ function toggleShop() {
 function renderShop() {
     const list = document.getElementById('suits-list');
     list.innerHTML = '';
-    Object.keys(SUITS).forEach(key => {
-        const suit = SUITS[key];
+    Object.keys(SUITS).forEach(k => {
+        const s = SUITS[k];
         const row = document.createElement('div');
         row.className = 'suit-item';
-        
-        let buttonHtml = '';
-        if (state.equippedSuit === key) {
-            buttonHtml = `<button class="suit-btn equipped">Equipped</button>`;
-        } else if (suit.owned) {
-            buttonHtml = `<button class="suit-btn" onclick="equipSuit('${key}')">Equip</button>`;
-        } else {
-            buttonHtml = `<button class="suit-btn" onclick="buySuit('${key}')">Unlock (${suit.cost} 🪙)</button>`;
-        }
+        let btn = '';
+        if (state.equippedSuit === k) btn = `<button class="suit-btn equipped">Equipped</button>`;
+        else if (s.owned) btn = `<button class="suit-btn" onclick="equipSuit('${k}')">Equip</button>`;
+        else btn = `<button class="suit-btn" onclick="buySuit('${k}')">Unlock (${s.cost} 🪙)</button>`;
 
-        row.innerHTML = `
-            <div>
-                <b>${suit.name}</b><br>
-                <small style="color:#94a3b8">Speed: +${Math.round((suit.speed - 1)*100)}% | DMG: ${suit.damage}</small>
-            </div>
-            ${buttonHtml}
-        `;
+        row.innerHTML = `<div><b>${s.name}</b><br><small style="color:#94a3b8">Speed +${Math.round((s.speed-1)*100)}% | DMG: ${s.damage}</small></div>${btn}`;
         list.appendChild(row);
     });
 }
 
-window.buySuit = function(key) {
-    const suit = SUITS[key];
-    if (state.coins >= suit.cost) {
-        state.coins -= suit.cost;
-        suit.owned = true;
-        equipSuit(key);
+window.buySuit = function(k) {
+    const s = SUITS[k];
+    if (state.coins >= s.cost) {
+        state.coins -= s.cost;
+        s.owned = true;
+        equipSuit(k);
     } else {
-        alert("Not enough coins! Stop crimes around the city to earn more.");
+        alert("Not enough coins! Stop crimes to earn more.");
     }
 };
 
-window.equipSuit = function(key) {
-    state.equippedSuit = key;
-    const suit = SUITS[key];
-    bodyMat.color.setHex(suit.color);
-    accentMat.color.setHex(suit.accent);
+window.equipSuit = function(k) {
+    state.equippedSuit = k;
+    const s = SUITS[k];
+    primMat.color.setHex(s.prim);
+    secMat.color.setHex(s.sec);
+    eyeMat.emissive.setHex(s.emissive);
     updateHud();
     renderShop();
 };
@@ -524,7 +613,7 @@ function updateHud() {
     document.getElementById('val-suit').innerText = SUITS[state.equippedSuit].name;
 }
 
-// --- MAIN LOOP ---
+// --- GAME LOOP & PHYSICS ENGINE ---
 const clock = new THREE.Clock();
 
 function animate() {
@@ -532,22 +621,16 @@ function animate() {
     const dt = Math.min(clock.getDelta(), 0.1);
     const activeSuit = SUITS[state.equippedSuit];
 
-    // Crosshair update
-    const aimTarget = getAimTarget();
-    document.getElementById('crosshair').className = aimTarget ? 'valid-target' : '';
+    // Crosshair target lock update
+    const target = getTargetBuilding();
+    document.getElementById('crosshair').className = target ? 'valid-target' : '';
 
-    // Wall Detection (Climbing)
-    let nearWall = false;
-    let wallNormal = new THREE.Vector3();
-    for (let b of buildings) {
-        const box = new THREE.Box3().setFromObject(b);
-        const playerBox = new THREE.Box3().setFromCenterAndSize(playerGroup.position, new THREE.Vector3(1, 2, 1));
-        if (box.intersectsBox(playerBox)) {
-            nearWall = true;
-            wallNormal.set(playerGroup.position.x - b.position.x, 0, playerGroup.position.z - b.position.z).normalize();
-            break;
-        }
-    }
+    // Check if enemy is nearby to show attack prompt
+    let enemyNear = false;
+    enemies.forEach(e => {
+        if (playerGroup.position.distanceTo(e.mesh.position) < 7.0) enemyNear = true;
+    });
+    document.getElementById('combat-indicator').style.display = enemyNear ? 'block' : 'none';
 
     // Movement Vectors
     const moveInput = new THREE.Vector3();
@@ -558,90 +641,95 @@ function animate() {
     moveInput.normalize();
 
     const worldMove = moveInput.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+    const wallHit = getTouchingWall();
 
-    // Physics Update
-    if (state.isSwinging && state.swingPoint) {
-        // Pendulum web pull
-        const toPoint = state.swingPoint.clone().sub(playerGroup.position);
-        const dist = toPoint.length();
-        
-        // Gravity + Tension
-        playerVel.y -= 22 * dt;
-        if (dist > state.swingDistance) {
-            const pullDir = toPoint.clone().normalize();
-            const dot = playerVel.dot(pullDir);
-            if (dot < 0) playerVel.sub(pullDir.multiplyScalar(dot));
-            playerVel.add(pullDir.multiplyScalar((dist - state.swingDistance) * 8 * dt));
+    // 1. SWINGING STATE
+    if (state.isSwinging) {
+        const toAnchor = state.swingAnchor.clone().sub(playerGroup.position);
+        const dist = toAnchor.length();
+
+        // Pendulum tension math
+        playerVel.y -= 28 * dt; // Gravity
+        if (dist > state.swingRadius) {
+            const pullDir = toAnchor.clone().normalize();
+            const velAlongRope = playerVel.dot(pullDir);
+            if (velAlongRope < 0) playerVel.sub(pullDir.multiplyScalar(velAlongRope));
+            playerVel.add(pullDir.multiplyScalar((dist - state.swingRadius) * 20 * dt));
         }
 
-        // Web Line update
-        const positions = webLine.geometry.attributes.position.array;
-        positions[0] = playerGroup.position.x;
-        positions[1] = playerGroup.position.y + 1.2;
-        positions[2] = playerGroup.position.z;
-        positions[3] = state.swingPoint.x;
-        positions[4] = state.swingPoint.y;
-        positions[5] = state.swingPoint.z;
-        webLine.geometry.attributes.position.needsUpdate = true;
+        // Steer swing
+        playerVel.add(worldMove.multiplyScalar(15 * dt));
 
-    } else if (nearWall && (keys['KeyW'] || keys['Space'])) {
-        // Wall Run / Climb
+        // Update web visual
+        const handPos = playerGroup.position.clone().add(new THREE.Vector3(0.4, 1.4, 0));
+        updateWebGeometry(handPos, state.swingAnchor);
+
+    // 2. WALL CLIMBING STATE
+    } else if (wallHit && (keys['KeyW'] || keys['Space'])) {
         state.isClimbing = true;
-        playerVel.y = 12 * activeSuit.speed;
-        playerVel.x = worldMove.x * 6;
-        playerVel.z = worldMove.z * 6;
+        playerVel.y = 14 * activeSuit.speed;
+        playerVel.x = -wallHit.face.normal.x * 2;
+        playerVel.z = -wallHit.face.normal.z * 2;
+        playerGroup.rotation.y = Math.atan2(-wallHit.face.normal.x, -wallHit.face.normal.z);
+
+    // 3. REGULAR LOCOMOTION
     } else {
-        // Normal ground / air movement
         state.isClimbing = false;
-        const speed = 18 * activeSuit.speed;
-        playerVel.x = THREE.MathUtils.lerp(playerVel.x, worldMove.x * speed, 8 * dt);
-        playerVel.z = THREE.MathUtils.lerp(playerVel.z, worldMove.z * speed, 8 * dt);
-        playerVel.y -= 32 * dt; // Gravity
+        const targetSpeed = 22 * activeSuit.speed;
+        playerVel.x = THREE.MathUtils.lerp(playerVel.x, worldMove.x * targetSpeed, 10 * dt);
+        playerVel.z = THREE.MathUtils.lerp(playerVel.z, worldMove.z * targetSpeed, 10 * dt);
+        playerVel.y -= 32 * dt; // Normal Gravity
 
         if (isGrounded && keys['Space']) {
-            playerVel.y = 14;
+            playerVel.y = 15;
             isGrounded = false;
+        }
+
+        if (worldMove.lengthSq() > 0.01) {
+            const targetRot = Math.atan2(worldMove.x, worldMove.z);
+            playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, targetRot, 12 * dt);
         }
     }
 
-    // Apply Position
+    // Apply Velocity
     playerGroup.position.addScaledVector(playerVel, dt);
 
-    // Ground Collision
+    // Ground Floor Constraint
     if (playerGroup.position.y <= 0) {
         playerGroup.position.y = 0;
         playerVel.y = 0;
         isGrounded = true;
     }
 
-    // Rotate Player facing motion
-    if (worldMove.lengthSq() > 0.01) {
-        const targetRot = Math.atan2(worldMove.x, worldMove.z);
-        playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, targetRot, 10 * dt);
+    // Attack Punch Animation
+    if (state.attackAnim > 0) {
+        state.attackAnim -= dt * 4;
+        rightArmGroup.rotation.x = -Math.PI / 2 * Math.sin(state.attackAnim * Math.PI);
+    } else {
+        rightArmGroup.rotation.x = 0;
     }
 
-    // Camera follow (Third-person)
-    const cameraOffset = new THREE.Vector3(0, 2.5, 6.5);
-    cameraOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), cameraPitch);
-    cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
-    camera.position.copy(playerGroup.position).add(cameraOffset);
-    camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.5, playerGroup.position.z);
+    // Camera follow (Third Person with Pitch & Yaw)
+    const camOffset = new THREE.Vector3(0, 2.5, 7.0);
+    camOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), cameraPitch);
+    camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+    camera.position.copy(playerGroup.position).add(camOffset);
+    camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.6, playerGroup.position.z);
 
-    // Enemies AI tracking
-    enemies.forEach(enemy => {
-        const distToPlayer = enemy.mesh.position.distanceTo(playerGroup.position);
-        if (distToPlayer < 35 && distToPlayer > 1.5) {
-            const dir = playerGroup.position.clone().sub(enemy.mesh.position).normalize();
+    // Thug AI Behaviour
+    enemies.forEach(e => {
+        const dist = e.mesh.position.distanceTo(playerGroup.position);
+        if (dist < 40 && dist > 1.8) {
+            const dir = playerGroup.position.clone().sub(e.mesh.position).normalize();
             dir.y = 0;
-            enemy.mesh.position.add(dir.multiplyScalar(enemy.speed * dt));
-            enemy.mesh.lookAt(playerGroup.position.x, enemy.mesh.position.y, playerGroup.position.z);
+            e.mesh.position.add(dir.multiplyScalar(4 * dt));
+            e.mesh.lookAt(playerGroup.position.x, e.mesh.position.y, playerGroup.position.z);
         }
     });
 
     renderer.render(scene, camera);
 }
 
-// Window resize handling
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
