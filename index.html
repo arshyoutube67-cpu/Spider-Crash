@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spider-Hero: Web of the City 3D</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body { overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        
+        /* UI Overlay */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+        .hud-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 12px 18px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            min-width: 220px;
+        }
+        .hud-val { font-size: 20px; font-weight: bold; color: #fbbf24; }
+        .hud-hp { color: #ef4444; }
+        .hud-suit { color: #38bdf8; }
+
+        /* Crosshair */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            transition: all 0.1s ease;
+        }
+        #crosshair.valid-target { border-color: #38bdf8; background: rgba(56, 189, 248, 0.3); transform: translate(-50%, -50%) scale(1.3); }
+
+        /* Crime Mission Notification */
+        #crime-alert {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(220, 38, 38, 0.85);
+            border: 1px solid #f87171;
+            padding: 10px 24px;
+            border-radius: 30px;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+            display: none;
+            pointer-events: none;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.05); }
+        }
+
+        /* Controls Help */
+        #controls-card {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.7);
+            color: #cbd5e1;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            line-height: 1.6;
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: none;
+        }
+        #controls-card b { color: #fff; }
+
+        /* Suit Upgrade Shop Modal */
+        #shop-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid #3b82f6;
+            border-radius: 16px;
+            padding: 24px;
+            width: 420px;
+            color: #fff;
+            display: none;
+            box-shadow: 0 0 35px rgba(59, 130, 246, 0.5);
+            z-index: 100;
+        }
+        #shop-modal h2 { margin-bottom: 12px; text-align: center; color: #60a5fa; }
+        .suit-item {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .suit-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .suit-btn:hover { background: #1d4ed8; }
+        .suit-btn.equipped { background: #10b981; cursor: default; }
+
+        /* Action Indicators */
+        #status-prompt {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            color: #facc15;
+            font-size: 14px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            pointer-events: none;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+<div id="crosshair"></div>
+
+<div id="hud">
+    <div class="hud-card">
+        <div>Health: <span id="val-hp" class="hud-val hud-hp">100 / 100</span></div>
+        <div>Coins: <span id="val-coins" class="hud-val">0</span> 🪙</div>
+        <div>Equipped: <span id="val-suit" class="hud-val hud-suit">Classic Suit</span></div>
+    </div>
+</div>
+
+<div id="crime-alert">🚨 CRIME ALERT: Defeat thugs in the alley! [<span id="thug-count">3</span> left]</div>
+<div id="status-prompt"></div>
+
+<div id="controls-card">
+    <b>Controls:</b><br>
+    • <b>W, A, S, D</b> : Move / Wall Climb<br>
+    • <b>SPACE</b> : Jump / Release Swing<br>
+    • <b>E (Hold) or Right-Click</b> : Web Swing<br>
+    • <b>F or Left-Click</b> : Web Strike / Melee Attack<br>
+    • <b>U</b> : Open Suit Upgrade Shop<br>
+    • <b>Mouse Look</b> : Click canvas to lock camera
+</div>
+
+<div id="shop-modal">
+    <h2>Suit Fabrication Hub</h2>
+    <div id="suits-list"></div>
+    <p style="text-align: center; margin-top: 15px; font-size: 12px; color: #94a3b8;">Press <b>U</b> or <b>ESC</b> to close</p>
+</div>
+
+<!-- Three.js CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+// --- GAME STATE ---
+const state = {
+    coins: 100,
+    hp: 100,
+    maxHp: 100,
+    equippedSuit: 'classic',
+    isSwinging: false,
+    swingPoint: null,
+    swingDistance: 0,
+    isClimbing: false,
+    shopOpen: false
+};
+
+// --- SUIT DATA ---
+const SUITS = {
+    classic: { name: 'Classic Suit', cost: 0, owned: true, color: 0xc92a2a, accent: 0x1d4ed8, speed: 1.0, damage: 25 },
+    symbiote: { name: 'Symbiote Suit', cost: 150, owned: false, color: 0x111827, accent: 0xf8fafc, speed: 1.25, damage: 45 },
+    iron: { name: 'Iron Spider', cost: 300, owned: false, color: 0xb91c1c, accent: 0xf59e0b, speed: 1.35, damage: 60 },
+    suit2099: { name: 'Spider-Man 2099', cost: 500, owned: false, color: 0x1e3a8a, accent: 0xef4444, speed: 1.5, damage: 80 }
+};
+
+// --- INITIALIZE THREE.JS SCENE ---
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+scene.fog = new THREE.FogExp2(0x87ceeb, 0.007);
+
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+container.appendChild(renderer.domElement);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+const sunLight = new THREE.DirectionalLight(0xfffaed, 0.9);
+sunLight.position.set(100, 200, 100);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 400;
+const d = 150;
+sunLight.shadow.camera.left = -d;
+sunLight.shadow.camera.right = d;
+sunLight.shadow.camera.top = d;
+sunLight.shadow.camera.bottom = -d;
+scene.add(sunLight);
+
+// --- CITY ENVIRONMENT ---
+const citySize = 14;
+const blockSize = 32;
+const buildings = [];
+const streetObjects = [];
+
+// Ground
+const groundGeo = new THREE.PlaneGeometry(citySize * blockSize * 1.5, citySize * blockSize * 1.5);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x222629, roughness: 0.8 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Procedural City Generator
+const buildingPalette = [0x334155, 0x475569, 0x1e293b, 0x64748b, 0x0f172a];
+for (let x = -citySize / 2; x < citySize / 2; x++) {
+    for (let z = -citySize / 2; z < citySize / 2; z++) {
+        if (Math.random() > 0.3) {
+            const h = 25 + Math.random() * 80;
+            const w = blockSize * 0.7;
+            const bGeo = new THREE.BoxGeometry(w, h, w);
+            const bColor = buildingPalette[Math.floor(Math.random() * buildingPalette.length)];
+            const bMat = new THREE.MeshStandardMaterial({ color: bColor, roughness: 0.3, metalness: 0.2 });
+            const building = new THREE.Mesh(bGeo, bMat);
+            building.position.set(x * blockSize, h / 2, z * blockSize);
+            building.castShadow = true;
+            building.receiveShadow = true;
+            scene.add(building);
+            buildings.push(building);
+        }
+    }
+}
+
+// --- SPIDER-MAN CHARACTER ---
+const playerGroup = new THREE.Group();
+playerGroup.position.set(0, 5, 0);
+scene.add(playerGroup);
+
+// Character Rigging with meshes
+const bodyMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.color, roughness: 0.5 });
+const accentMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.accent, roughness: 0.5 });
+
+const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.45), bodyMat);
+torso.position.y = 1.25;
+torso.castShadow = true;
+playerGroup.add(torso);
+
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), bodyMat);
+head.position.y = 1.95;
+head.castShadow = true;
+playerGroup.add(head);
+
+// Mask Eyes
+const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.05), eyeMat);
+eyeL.position.set(0.12, 1.98, 0.3);
+eyeL.rotation.z = -0.15;
+const eyeR = eyeL.clone();
+eyeR.position.x = -0.12;
+eyeR.rotation.z = 0.15;
+playerGroup.add(eyeL, eyeR);
+
+// Limbs
+const limbGeo = new THREE.BoxGeometry(0.24, 0.8, 0.25);
+const leftArm = new THREE.Mesh(limbGeo, accentMat);
+leftArm.position.set(0.55, 1.2, 0);
+const rightArm = new THREE.Mesh(limbGeo, accentMat);
+rightArm.position.set(-0.55, 1.2, 0);
+const leftLeg = new THREE.Mesh(limbGeo, accentMat);
+leftLeg.position.set(0.24, 0.4, 0);
+const rightLeg = new THREE.Mesh(limbGeo, accentMat);
+rightLeg.position.set(-0.24, 0.4, 0);
+
+playerGroup.add(leftArm, rightArm, leftLeg, rightLeg);
+
+// Web Visual Line
+const webLineMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+const webLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+const webLine = new THREE.Line(webLineGeo, webLineMat);
+webLine.visible = false;
+scene.add(webLine);
+
+// --- PLAYER PHYSICS & STATE ---
+const playerVel = new THREE.Vector3();
+let isGrounded = false;
+let cameraPitch = 0;
+let cameraYaw = 0;
+const keys = {};
+
+// --- CRIMES / ENEMIES SYSTEM ---
+const enemies = [];
+let activeCrime = false;
+let crimeLocation = new THREE.Vector3();
+
+function spawnCrime() {
+    if (activeCrime) return;
+    const b = buildings[Math.floor(Math.random() * buildings.length)];
+    crimeLocation.set(b.position.x + (Math.random() - 0.5) * 15, 1, b.position.z + (Math.random() - 0.5) * 15);
+    
+    // Spawn 3 Thugs
+    const count = 3;
+    for (let i = 0; i < count; i++) {
+        const thugGroup = new THREE.Group();
+        const thugBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.5), new THREE.MeshStandardMaterial({ color: 0x374151 }));
+        thugBody.position.y = 0.9;
+        thugGroup.add(thugBody);
+        thugGroup.position.copy(crimeLocation).add(new THREE.Vector3((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6));
+        scene.add(thugGroup);
+
+        enemies.push({
+            mesh: thugGroup,
+            hp: 60,
+            maxHp: 60,
+            speed: 3 + Math.random() * 2
+        });
+    }
+
+    activeCrime = true;
+    document.getElementById('crime-alert').style.display = 'block';
+    document.getElementById('thug-count').innerText = enemies.length;
+}
+
+// First crime after 3 seconds
+setTimeout(spawnCrime, 3000);
+
+// --- INPUT LISTENERS ---
+window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (e.code === 'KeyE') startSwing();
+    if (e.code === 'KeyF') attack();
+    if (e.code === 'KeyU') toggleShop();
+});
+window.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+    if (e.code === 'KeyE') releaseSwing();
+});
+window.addEventListener('mousedown', (e) => {
+    if (document.pointerLockElement !== document.body) {
+        document.body.requestPointerLock();
+        return;
+    }
+    if (e.button === 0) attack();
+    if (e.button === 2) startSwing();
+});
+window.addEventListener('mouseup', (e) => {
+    if (e.button === 2) releaseSwing();
+});
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+window.addEventListener('mousemove', (e) => {
+    if (document.pointerLockElement === document.body) {
+        cameraYaw -= e.movementX * 0.0025;
+        cameraPitch -= e.movementY * 0.0025;
+        cameraPitch = Math.max(-1.2, Math.min(1.2, cameraPitch));
+    }
+});
+
+// Raycaster for swinging & crosshair target detection
+const raycaster = new THREE.Raycaster();
+function getAimTarget() {
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const hits = raycaster.intersectObjects(buildings);
+    return (hits.length > 0 && hits[0].distance < 110) ? hits[0] : null;
+}
+
+// --- SWING & COMBAT ACTIONS ---
+function startSwing() {
+    if (state.isSwinging) return;
+    const hit = getAimTarget();
+    if (hit && hit.point.y > playerGroup.position.y + 3) {
+        state.isSwinging = true;
+        state.swingPoint = hit.point;
+        state.swingDistance = playerGroup.position.distanceTo(hit.point);
+        webLine.visible = true;
+    }
+}
+
+function releaseSwing() {
+    if (state.isSwinging) {
+        state.isSwinging = false;
+        webLine.visible = false;
+        // Boost forward on release
+        const fwd = new THREE.Vector3(0, 0.4, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+        playerVel.add(fwd.multiplyScalar(15));
+    }
+}
+
+function attack() {
+    const activeSuit = SUITS[state.equippedSuit];
+    let hitAny = false;
+    
+    // Check melee reach
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        const enemy = enemies[i];
+        const dist = playerGroup.position.distanceTo(enemy.mesh.position);
+        if (dist < 5.0) {
+            enemy.hp -= activeSuit.damage;
+            hitAny = true;
+            
+            // Knockback
+            const knock = enemy.mesh.position.clone().sub(playerGroup.position).normalize().multiplyScalar(6);
+            enemy.mesh.position.add(knock);
+
+            if (enemy.hp <= 0) {
+                scene.remove(enemy.mesh);
+                enemies.splice(i, 1);
+                state.coins += 50;
+                updateHud();
+                document.getElementById('thug-count').innerText = enemies.length;
+            }
+        }
+    }
+
+    if (enemies.length === 0 && activeCrime) {
+        activeCrime = false;
+        state.coins += 150;
+        updateHud();
+        document.getElementById('crime-alert').style.display = 'none';
+        showStatus('Crime Cleared! Bonus: +150 Coins');
+        setTimeout(spawnCrime, 8000);
+    }
+}
+
+function showStatus(text) {
+    const el = document.getElementById('status-prompt');
+    el.innerText = text;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 2500);
+}
+
+// --- SHOP & SUIT UPGRADE SYSTEM ---
+function toggleShop() {
+    state.shopOpen = !state.shopOpen;
+    document.getElementById('shop-modal').style.display = state.shopOpen ? 'block' : 'none';
+    if (state.shopOpen) {
+        document.exitPointerLock();
+        renderShop();
+    }
+}
+
+function renderShop() {
+    const list = document.getElementById('suits-list');
+    list.innerHTML = '';
+    Object.keys(SUITS).forEach(key => {
+        const suit = SUITS[key];
+        const row = document.createElement('div');
+        row.className = 'suit-item';
+        
+        let buttonHtml = '';
+        if (state.equippedSuit === key) {
+            buttonHtml = `<button class="suit-btn equipped">Equipped</button>`;
+        } else if (suit.owned) {
+            buttonHtml = `<button class="suit-btn" onclick="equipSuit('${key}')">Equip</button>`;
+        } else {
+            buttonHtml = `<button class="suit-btn" onclick="buySuit('${key}')">Unlock (${suit.cost} 🪙)</button>`;
+        }
+
+        row.innerHTML = `
+            <div>
+                <b>${suit.name}</b><br>
+                <small style="color:#94a3b8">Speed: +${Math.round((suit.speed - 1)*100)}% | DMG: ${suit.damage}</small>
+            </div>
+            ${buttonHtml}
+        `;
+        list.appendChild(row);
+    });
+}
+
+window.buySuit = function(key) {
+    const suit = SUITS[key];
+    if (state.coins >= suit.cost) {
+        state.coins -= suit.cost;
+        suit.owned = true;
+        equipSuit(key);
+    } else {
+        alert("Not enough coins! Stop crimes around the city to earn more.");
+    }
+};
+
+window.equipSuit = function(key) {
+    state.equippedSuit = key;
+    const suit = SUITS[key];
+    bodyMat.color.setHex(suit.color);
+    accentMat.color.setHex(suit.accent);
+    updateHud();
+    renderShop();
+};
+
+function updateHud() {
+    document.getElementById('val-hp').innerText = `${state.hp} / ${state.maxHp}`;
+    document.getElementById('val-coins').innerText = state.coins;
+    document.getElementById('val-suit').innerText = SUITS[state.equippedSuit].name;
+}
+
+// --- MAIN LOOP ---
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.1);
+    const activeSuit = SUITS[state.equippedSuit];
+
+    // Crosshair update
+    const aimTarget = getAimTarget();
+    document.getElementById('crosshair').className = aimTarget ? 'valid-target' : '';
+
+    // Wall Detection (Climbing)
+    let nearWall = false;
+    let wallNormal = new THREE.Vector3();
+    for (let b of buildings) {
+        const box = new THREE.Box3().setFromObject(b);
+        const playerBox = new THREE.Box3().setFromCenterAndSize(playerGroup.position, new THREE.Vector3(1, 2, 1));
+        if (box.intersectsBox(playerBox)) {
+            nearWall = true;
+            wallNormal.set(playerGroup.position.x - b.position.x, 0, playerGroup.position.z - b.position.z).normalize();
+            break;
+        }
+    }
+
+    // Movement Vectors
+    const moveInput = new THREE.Vector3();
+    if (keys['KeyW']) moveInput.z -= 1;
+    if (keys['KeyS']) moveInput.z += 1;
+    if (keys['KeyA']) moveInput.x -= 1;
+    if (keys['KeyD']) moveInput.x += 1;
+    moveInput.normalize();
+
+    const worldMove = moveInput.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+
+    // Physics Update
+    if (state.isSwinging && state.swingPoint) {
+        // Pendulum web pull
+        const toPoint = state.swingPoint.clone().sub(playerGroup.position);
+        const dist = toPoint.length();
+        
+        // Gravity + Tension
+        playerVel.y -= 22 * dt;
+        if (dist > state.swingDistance) {
+            const pullDir = toPoint.clone().normalize();
+            const dot = playerVel.dot(pullDir);
+            if (dot < 0) playerVel.sub(pullDir.multiplyScalar(dot));
+            playerVel.add(pullDir.multiplyScalar((dist - state.swingDistance) * 8 * dt));
+        }
+
+        // Web Line update
+        const positions = webLine.geometry.attributes.position.array;
+        positions[0] = playerGroup.position.x;
+        positions[1] = playerGroup.position.y + 1.2;
+        positions[2] = playerGroup.position.z;
+        positions[3] = state.swingPoint.x;
+        positions[4] = state.swingPoint.y;
+        positions[5] = state.swingPoint.z;
+        webLine.geometry.attributes.position.needsUpdate = true;
+
+    } else if (nearWall && (keys['KeyW'] || keys['Space'])) {
+        // Wall Run / Climb
+        state.isClimbing = true;
+        playerVel.y = 12 * activeSuit.speed;
+        playerVel.x = worldMove.x * 6;
+        playerVel.z = worldMove.z * 6;
+    } else {
+        // Normal ground / air movement
+        state.isClimbing = false;
+        const speed = 18 * activeSuit.speed;
+        playerVel.x = THREE.MathUtils.lerp(playerVel.x, worldMove.x * speed, 8 * dt);
+        playerVel.z = THREE.MathUtils.lerp(playerVel.z, worldMove.z * speed, 8 * dt);
+        playerVel.y -= 32 * dt; // Gravity
+
+        if (isGrounded && keys['Space']) {
+            playerVel.y = 14;
+            isGrounded = false;
+        }
+    }
+
+    // Apply Position
+    playerGroup.position.addScaledVector(playerVel, dt);
+
+    // Ground Collision
+    if (playerGroup.position.y <= 0) {
+        playerGroup.position.y = 0;
+        playerVel.y = 0;
+        isGrounded = true;
+    }
+
+    // Rotate Player facing motion
+    if (worldMove.lengthSq() > 0.01) {
+        const targetRot = Math.atan2(worldMove.x, worldMove.z);
+        playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, targetRot, 10 * dt);
+    }
+
+    // Camera follow (Third-person)
+    const cameraOffset = new THREE.Vector3(0, 2.5, 6.5);
+    cameraOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), cameraPitch);
+    cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+    camera.position.copy(playerGroup.position).add(cameraOffset);
+    camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.5, playerGroup.position.z);
+
+    // Enemies AI tracking
+    enemies.forEach(enemy => {
+        const distToPlayer = enemy.mesh.position.distanceTo(playerGroup.position);
+        if (distToPlayer < 35 && distToPlayer > 1.5) {
+            const dir = playerGroup.position.clone().sub(enemy.mesh.position).normalize();
+            dir.y = 0;
+            enemy.mesh.position.add(dir.multiplyScalar(enemy.speed * dt));
+            enemy.mesh.lookAt(playerGroup.position.x, enemy.mesh.position.y, playerGroup.position.z);
+        }
+    });
+
+    renderer.render(scene, camera);
+}
+
+// Window resize handling
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+updateHud();
+animate();
+</script>
+</body>
+</html>
