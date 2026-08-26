@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spider-Man: 3D City Hero</title>
+    <title>Spider-Man 3D: Rooftop & Swing Overhaul</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
         body { overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -183,7 +183,7 @@
 <div id="canvas-container"></div>
 <div id="crosshair"></div>
 <div id="target-ring"></div>
-<div id="combat-indicator">⚡ PRESS 'F' OR LEFT-CLICK TO HIT!</div>
+<div id="combat-indicator">⚡ PRESS 'F' OR CLICK TO ATTACK!</div>
 
 <div id="hud">
     <div class="hud-card">
@@ -193,17 +193,17 @@
     </div>
 </div>
 
-<div id="crime-alert">🚨 CRIME WAVE: Defeat thugs! [<span id="thug-count">3</span> left]</div>
+<div id="crime-alert">🚨 CRIME ALERT: Eliminate thugs! [<span id="thug-count">3</span> left]</div>
 <div id="action-msg"></div>
 
 <div id="controls-card">
     <b>Controls:</b><br>
-    • <b>W, A, S, D</b> : Move & Climb Walls<br>
-    • <b>SPACE</b> : Jump / Boost Swing / Wall Launch<br>
-    • <b>Hold E or Right-Click</b> : Web Swing<br>
-    • <b>F or Left-Click</b> : Punch / Web-Strike<br>
+    • <b>W, A, S, D</b> : Move & Climb Rooftops/Walls<br>
+    • <b>SPACE</b> : Jump / Release Swing with Boost<br>
+    • <b>Hold E or Right-Click</b> : Smooth Web-Swing<br>
+    • <b>F or Left-Click</b> : Punch / Combat Strike<br>
     • <b>U</b> : Suit Upgrades Shop<br>
-    • <b>Mouse</b> : Look around (Click screen to Lock)
+    • <b>Click Screen</b> : Lock Mouse / Free Look
 </div>
 
 <div id="shop-modal">
@@ -239,7 +239,7 @@ const SUITS = {
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x93c5fd);
-scene.fog = new THREE.FogExp2(0x93c5fd, 0.005);
+scene.fog = new THREE.FogExp2(0x93c5fd, 0.0035);
 
 const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -252,13 +252,13 @@ const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.7);
 scene.add(hemiLight);
 
 const sun = new THREE.DirectionalLight(0xfffbeb, 1.2);
-sun.position.set(100, 200, 80);
+sun.position.set(120, 250, 90);
 sun.castShadow = true;
 sun.shadow.mapSize.width = 2048;
 sun.shadow.mapSize.height = 2048;
-const d = 160;
-sun.shadow.camera.left = -d; sun.shadow.camera.right = d;
-sun.shadow.camera.top = d; sun.shadow.camera.bottom = -d;
+const shadowDist = 200;
+sun.shadow.camera.left = -shadowDist; sun.shadow.camera.right = shadowDist;
+sun.shadow.camera.top = shadowDist; sun.shadow.camera.bottom = -shadowDist;
 scene.add(sun);
 
 function createBuildingTexture() {
@@ -283,11 +283,11 @@ const windowTexture = createBuildingTexture();
 
 const buildings = [];
 const cityGrid = 10;
-const blockSpacing = 42;
+const blockSpacing = 44;
 
 const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(cityGrid * blockSpacing * 2.5, cityGrid * blockSpacing * 2.5),
-    new THREE.MeshStandardMaterial({ color: 0x1e2430, roughness: 0.9 })
+    new THREE.PlaneGeometry(cityGrid * blockSpacing * 3, cityGrid * blockSpacing * 3),
+    new THREE.MeshStandardMaterial({ color: 0x181e29, roughness: 0.9 })
 );
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
@@ -297,7 +297,7 @@ for (let x = -cityGrid / 2; x <= cityGrid / 2; x++) {
     for (let z = -cityGrid / 2; z <= cityGrid / 2; z++) {
         if (Math.abs(x) <= 1 && Math.abs(z) <= 1) continue;
         if (Math.random() > 0.25) {
-            const h = 35 + Math.random() * 85;
+            const h = 45 + Math.random() * 80;
             const w = blockSpacing * 0.72;
             const tex = windowTexture.clone();
             tex.repeat.set(2, Math.floor(h / 8));
@@ -305,7 +305,7 @@ for (let x = -cityGrid / 2; x <= cityGrid / 2; x++) {
 
             const mat = new THREE.MeshStandardMaterial({
                 map: tex,
-                roughness: 0.3,
+                roughness: 0.35,
                 metalness: 0.2
             });
             const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat);
@@ -313,6 +313,8 @@ for (let x = -cityGrid / 2; x <= cityGrid / 2; x++) {
             b.castShadow = true;
             b.receiveShadow = true;
             scene.add(b);
+
+            b.geometry.computeBoundingBox();
             buildings.push(b);
         }
     }
@@ -384,7 +386,7 @@ let webGeo = new THREE.TubeGeometry(webCurve, 16, 0.04, 6, false);
 const webMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: 0x93c5fd,
-    emissiveIntensity: 0.5,
+    emissiveIntensity: 0.6,
     roughness: 0.2
 });
 const webMesh = new THREE.Mesh(webGeo, webMat);
@@ -477,7 +479,7 @@ function spawnCrime() {
 setTimeout(spawnCrime, 2000);
 
 const keys = {};
-let camPitch = 0.15;
+let camPitch = 0.05;
 let camYaw = 0;
 const velocity = new THREE.Vector3();
 let isGrounded = false;
@@ -509,7 +511,7 @@ window.addEventListener('mousemove', e => {
     if (document.pointerLockElement === document.body) {
         camYaw -= e.movementX * 0.0028;
         camPitch -= e.movementY * 0.0024;
-        camPitch = Math.max(-1.1, Math.min(1.1, camPitch));
+        camPitch = Math.max(-0.65, Math.min(0.85, camPitch));
     }
 });
 
@@ -517,46 +519,86 @@ const aimRay = new THREE.Raycaster();
 function getAimTarget() {
     aimRay.setFromCamera(new THREE.Vector2(0, 0), camera);
     const hits = aimRay.intersectObjects(buildings);
-    return hits.length > 0 && hits[0].distance < 130 ? hits[0] : null;
+    return hits.length > 0 && hits[0].distance < 140 ? hits[0] : null;
 }
 
-function getNearbyWall() {
-    const dirs = [
-        new THREE.Vector3(0, 0, -1),
-        new THREE.Vector3(0, 0, 1),
-        new THREE.Vector3(-1, 0, 0),
-        new THREE.Vector3(1, 0, 0)
-    ];
-    for (let d of dirs) {
-        const ray = new THREE.Raycaster(player.position.clone().add(new THREE.Vector3(0, 1, 0)), d, 0, 1.5);
-        const hits = ray.intersectObjects(buildings);
-        if (hits.length > 0) return hits[0];
+function resolveBuildingCollisions() {
+    isGrounded = false;
+    state.isClimbing = false;
+    const playerRadius = 0.45;
+    const playerHeight = 2.0;
+    
+    // Check floor
+    if (player.position.y <= 0) {
+        player.position.y = 0;
+        velocity.y = 0;
+        isGrounded = true;
     }
-    return null;
+
+    const playerBox = new THREE.Box3();
+
+    for (let b of buildings) {
+        const box = new THREE.Box3().setFromObject(b);
+        playerBox.min.set(player.position.x - playerRadius, player.position.y, player.position.z - playerRadius);
+        playerBox.max.set(player.position.x + playerRadius, player.position.y + playerHeight, player.position.z + playerRadius);
+
+        if (box.intersectsBox(playerBox)) {
+            // Rooftop Landing
+            if (player.position.y >= box.max.y - 1.2 && velocity.y <= 0) {
+                player.position.y = box.max.y;
+                velocity.y = 0;
+                isGrounded = true;
+            } else {
+                // Side wall penetration resolution & Wall-Climbing trigger
+                const dx1 = box.max.x - (player.position.x - playerRadius);
+                const dx2 = (player.position.x + playerRadius) - box.min.x;
+                const dz1 = box.max.z - (player.position.z - playerRadius);
+                const dz2 = (player.position.z + playerRadius) - box.min.z;
+                const minOverlap = Math.min(dx1, dx2, dz1, dz2);
+
+                if (minOverlap === dx2) player.position.x = box.min.x - playerRadius;
+                else if (minOverlap === dx1) player.position.x = box.max.x + playerRadius;
+                else if (minOverlap === dz2) player.position.z = box.min.z - playerRadius;
+                else if (minOverlap === dz1) player.position.z = box.max.z + playerRadius;
+
+                // Wall climbing active when holding movement against walls
+                if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && !state.isSwinging) {
+                    state.isClimbing = true;
+                    velocity.y = 15 * SUITS[state.equippedSuit].speed;
+                }
+            }
+        }
+    }
 }
 
 function startSwing() {
     if (state.isSwinging) return;
     let target = getAimTarget();
     
+    // Proactive auto-hook to nearest towering skyscraper
     if (!target) {
         let bestDist = 999;
         buildings.forEach(b => {
             const dist = player.position.distanceTo(b.position);
-            if (dist > 15 && dist < 70 && b.position.y * 2 > player.position.y + 10) {
+            const buildingTop = b.position.y * 2;
+            if (dist > 15 && dist < 85 && buildingTop > player.position.y + 10) {
                 if (dist < bestDist) {
                     bestDist = dist;
-                    target = { point: new THREE.Vector3(b.position.x, b.position.y + 15, b.position.z) };
+                    target = { point: new THREE.Vector3(b.position.x, buildingTop, b.position.z) };
                 }
             }
         });
     }
 
-    if (target && target.point.y > player.position.y + 3) {
+    if (target && target.point.y > player.position.y + 4) {
         state.isSwinging = true;
         state.swingAnchor.copy(target.point);
-        state.swingLength = Math.max(8, player.position.distanceTo(target.point) * 0.85);
+        state.swingLength = Math.max(10, player.position.distanceTo(target.point) * 0.85);
         webMesh.visible = true;
+        
+        // Initial swing swing velocity impulse
+        const swingDir = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
+        velocity.add(swingDir.multiplyScalar(10));
     }
 }
 
@@ -565,7 +607,7 @@ function releaseSwing() {
         state.isSwinging = false;
         webMesh.visible = false;
         const forward = new THREE.Vector3(0, 0.45, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
-        velocity.add(forward.multiplyScalar(24));
+        velocity.add(forward.multiplyScalar(26));
     }
 }
 
@@ -669,6 +711,7 @@ function animate() {
     const dt = Math.min(clock.getDelta(), 0.1);
     const suit = SUITS[state.equippedSuit];
 
+    // HUD aiming update
     const aimHit = getAimTarget();
     const crosshair = document.getElementById('crosshair');
     const ring = document.getElementById('target-ring');
@@ -689,6 +732,7 @@ function animate() {
     });
     document.getElementById('combat-indicator').style.display = thugNear ? 'block' : 'none';
 
+    // Input Movement
     const inputDir = new THREE.Vector3();
     if (keys['KeyW'] || keys['ArrowUp']) inputDir.z -= 1;
     if (keys['KeyS'] || keys['ArrowDown']) inputDir.z += 1;
@@ -697,20 +741,20 @@ function animate() {
     inputDir.normalize();
 
     const worldInput = inputDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
-    const wall = getNearbyWall();
 
+    // Physics Update
     if (state.isSwinging) {
-        state.isClimbing = false;
         const toAnchor = state.swingAnchor.clone().sub(player.position);
         const dist = toAnchor.length();
 
-        velocity.y -= 25 * dt;
+        velocity.y -= 26 * dt;
 
+        // Pendulum constraint & tension acceleration
         if (dist > state.swingLength) {
             const ropeDir = toAnchor.clone().normalize();
             const vDot = velocity.dot(ropeDir);
             if (vDot < 0) velocity.sub(ropeDir.multiplyScalar(vDot));
-            velocity.add(ropeDir.multiplyScalar((dist - state.swingLength) * 22 * dt));
+            velocity.add(ropeDir.multiplyScalar((dist - state.swingLength) * 24 * dt));
         }
 
         velocity.add(worldInput.multiplyScalar(18 * dt));
@@ -720,18 +764,9 @@ function animate() {
         const hand = player.position.clone().add(new THREE.Vector3(0.3, 1.5, 0));
         updateWebRope(hand, state.swingAnchor);
 
-    } else if (wall && (keys['KeyW'] || keys['ArrowUp'] || keys['Space'])) {
-        state.isClimbing = true;
-        velocity.y = 16 * suit.speed;
-        velocity.x = worldInput.x * 6;
-        velocity.z = worldInput.z * 6;
-
-        if (keys['Space']) {
-            velocity.y = 18;
-            velocity.add(wall.face.normal.clone().multiplyScalar(16));
-        }
+    } else if (state.isClimbing) {
+        // Climbing physics handles vertical momentum
     } else {
-        state.isClimbing = false;
         const moveSpeed = 22 * suit.speed;
         velocity.x = THREE.MathUtils.lerp(velocity.x, worldInput.x * moveSpeed, 10 * dt);
         velocity.z = THREE.MathUtils.lerp(velocity.z, worldInput.z * moveSpeed, 10 * dt);
@@ -750,12 +785,10 @@ function animate() {
 
     player.position.addScaledVector(velocity, dt);
 
-    if (player.position.y <= 0) {
-        player.position.y = 0;
-        velocity.y = 0;
-        isGrounded = true;
-    }
+    // 3D Rooftop and Solid Wall Collisions
+    resolveBuildingCollisions();
 
+    // Animations
     const isMoving = isGrounded && worldInput.lengthSq() > 0.01;
     if (isMoving) {
         state.walkAnim += dt * 12;
@@ -780,12 +813,16 @@ function animate() {
         player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, camYaw, 10 * dt);
     }
 
-    const camOffset = new THREE.Vector3(0, 2.4, 7.0);
-    camOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), camPitch);
-    camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
-    camera.position.copy(player.position).add(camOffset);
-    camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
+    // Overhauled Third-Person Over-the-Shoulder Camera
+    const idealCamOffset = new THREE.Vector3(0.5, 2.0, 5.5);
+    idealCamOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), camPitch);
+    idealCamOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
+    
+    camera.position.lerp(player.position.clone().add(idealCamOffset), 0.25);
+    const targetLook = player.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+    camera.lookAt(targetLook);
 
+    // AI Thug behaviour
     enemies.forEach(e => {
         const d = e.mesh.position.distanceTo(player.position);
         if (d < 45 && d > 1.6) {
