@@ -3,108 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spider-Hero 3D: Remastered</title>
+    <title>Spider-Man: 3D City Hero</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-        body { overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
+        body { overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
         
-        /* HUD Top-Left */
         #hud {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 18px;
+            left: 18px;
             color: #fff;
             pointer-events: none;
             z-index: 10;
         }
         .hud-card {
-            background: rgba(10, 15, 30, 0.85);
+            background: rgba(15, 23, 42, 0.88);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 14px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 12px 18px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            min-width: 230px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            min-width: 220px;
         }
-        .hud-val { font-size: 20px; font-weight: bold; color: #fbbf24; }
+        .hud-val { font-size: 18px; font-weight: 800; color: #fbbf24; }
         .hud-hp { color: #ef4444; }
         .hud-suit { color: #38bdf8; }
 
-        /* Crosshair */
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 22px;
-            height: 22px;
-            border: 2px dashed rgba(255, 255, 255, 0.6);
+            width: 24px;
+            height: 24px;
+            border: 2px dashed rgba(255, 255, 255, 0.7);
             border-radius: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
-            transition: all 0.15s ease;
+            transition: all 0.12s ease;
             z-index: 10;
         }
         #crosshair.valid-target {
             border: 2px solid #38bdf8;
-            background: rgba(56, 189, 248, 0.25);
-            transform: translate(-50%, -50%) scale(1.4);
-            box-shadow: 0 0 12px #38bdf8;
+            background: rgba(56, 189, 248, 0.35);
+            box-shadow: 0 0 16px #38bdf8;
+            transform: translate(-50%, -50%) scale(1.35);
         }
 
-        /* Combat Prompt */
+        #target-ring {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border: 2px solid #38bdf8;
+            border-radius: 50%;
+            pointer-events: none;
+            display: none;
+            transform: translate(-50%, -50%);
+            z-index: 9;
+            box-shadow: 0 0 14px #38bdf8;
+        }
+
         #combat-indicator {
             position: absolute;
-            top: 60%;
+            top: 62%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(239, 68, 68, 0.9);
+            background: rgba(239, 68, 68, 0.95);
             border: 2px solid #fff;
             color: #fff;
             font-weight: 900;
-            font-size: 15px;
+            font-size: 14px;
+            letter-spacing: 0.5px;
             padding: 8px 18px;
             border-radius: 20px;
             pointer-events: none;
             display: none;
             z-index: 10;
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
-            animation: bounce 0.4s infinite alternate;
+            box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
+            animation: bounce 0.35s infinite alternate;
         }
         @keyframes bounce {
             from { transform: translate(-50%, -50%) scale(1); }
             to { transform: translate(-50%, -50%) scale(1.1); }
         }
 
-        /* Mission Notification */
         #crime-alert {
             position: absolute;
-            top: 25px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(220, 38, 38, 0.95);
+            background: rgba(220, 38, 38, 0.92);
             border: 2px solid #fca5a5;
-            padding: 10px 24px;
-            border-radius: 30px;
+            padding: 8px 22px;
+            border-radius: 24px;
             color: white;
             font-weight: bold;
-            font-size: 15px;
-            box-shadow: 0 0 25px rgba(239, 68, 68, 0.7);
+            font-size: 14px;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
             display: none;
             pointer-events: none;
             z-index: 10;
         }
 
-        /* Guide Card */
         #controls-card {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(10, 15, 30, 0.85);
+            bottom: 18px;
+            left: 18px;
+            background: rgba(15, 23, 42, 0.88);
             color: #cbd5e1;
-            padding: 12px 18px;
+            padding: 12px 16px;
             border-radius: 12px;
-            font-size: 13px;
+            font-size: 12px;
             line-height: 1.6;
             border: 1px solid rgba(255,255,255,0.12);
             pointer-events: none;
@@ -112,28 +121,27 @@
         }
         #controls-card b { color: #38bdf8; }
 
-        /* Shop Overlay */
         #shop-modal {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(15, 23, 42, 0.96);
+            background: rgba(15, 23, 42, 0.98);
             border: 2px solid #3b82f6;
             border-radius: 16px;
             padding: 24px;
-            width: 440px;
-            max-width: 90vw;
+            width: 420px;
+            max-width: 92vw;
             color: #fff;
             display: none;
-            box-shadow: 0 0 35px rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 35px rgba(59, 130, 246, 0.6);
             z-index: 100;
         }
-        #shop-modal h2 { margin-bottom: 12px; text-align: center; color: #60a5fa; }
+        #shop-modal h2 { margin-bottom: 14px; text-align: center; color: #60a5fa; }
         .suit-item {
             background: rgba(255, 255, 255, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 12px 16px;
+            padding: 12px 14px;
             border-radius: 10px;
             margin-bottom: 10px;
             display: flex;
@@ -158,11 +166,11 @@
             bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             color: #38bdf8;
             font-size: 15px;
             font-weight: bold;
-            padding: 8px 22px;
+            padding: 8px 24px;
             border-radius: 20px;
             pointer-events: none;
             display: none;
@@ -174,7 +182,8 @@
 
 <div id="canvas-container"></div>
 <div id="crosshair"></div>
-<div id="combat-indicator">⚡ PRESS 'F' OR CLICK TO ATTACK!</div>
+<div id="target-ring"></div>
+<div id="combat-indicator">⚡ PRESS 'F' OR LEFT-CLICK TO HIT!</div>
 
 <div id="hud">
     <div class="hud-card">
@@ -184,17 +193,17 @@
     </div>
 </div>
 
-<div id="crime-alert">🚨 CRIME IN PROGRESS: Eliminate Thugs! [<span id="thug-count">3</span> left]</div>
+<div id="crime-alert">🚨 CRIME WAVE: Defeat thugs! [<span id="thug-count">3</span> left]</div>
 <div id="action-msg"></div>
 
 <div id="controls-card">
-    <b>Controls & Action Guide:</b><br>
-    • <b>W, A, S, D</b> : Walk & Wall Crawl<br>
-    • <b>SPACE</b> : Jump / Launch off Wall or Swing<br>
-    • <b>Hold E / Right-Click</b> : Shoot Web & Swing<br>
-    • <b>F / Left-Click</b> : Attack / Web Strike<br>
+    <b>Controls:</b><br>
+    • <b>W, A, S, D</b> : Move & Climb Walls<br>
+    • <b>SPACE</b> : Jump / Boost Swing / Wall Launch<br>
+    • <b>Hold E or Right-Click</b> : Web Swing<br>
+    • <b>F or Left-Click</b> : Punch / Web-Strike<br>
     • <b>U</b> : Suit Upgrades Shop<br>
-    • <b>Click Screen</b> : Lock Mouse / Look Around
+    • <b>Mouse</b> : Look around (Click screen to Lock)
 </div>
 
 <div id="shop-modal">
@@ -206,7 +215,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
-// --- GLOBAL GAME STATE ---
 const state = {
     coins: 100,
     hp: 100,
@@ -214,68 +222,56 @@ const state = {
     equippedSuit: 'classic',
     isSwinging: false,
     swingAnchor: new THREE.Vector3(),
-    swingRadius: 0,
+    swingLength: 0,
     isClimbing: false,
-    climbNormal: new THREE.Vector3(),
     shopOpen: false,
-    attackAnim: 0
+    attackAnimTimer: 0,
+    walkAnim: 0
 };
 
-// --- SUITS CONFIGURATION ---
 const SUITS = {
-    classic: { name: 'Advanced Hero', cost: 0, owned: true, prim: 0xd92525, sec: 0x1d4ed8, emissive: 0xffffff, speed: 1.0, damage: 35 },
-    symbiote: { name: 'Shadow Symbiote', cost: 150, owned: false, prim: 0x111827, sec: 0x374151, emissive: 0x93c5fd, speed: 1.3, damage: 55 },
-    iron: { name: 'Iron Armor MK-I', cost: 300, owned: false, prim: 0x991b1b, sec: 0xf59e0b, emissive: 0xfef08a, speed: 1.45, damage: 75 },
-    suit2099: { name: 'Cyber 2099', cost: 500, owned: false, prim: 0x1e3a8a, sec: 0xef4444, emissive: 0x38bdf8, speed: 1.6, damage: 100 }
+    classic: { name: 'Advanced Hero', cost: 0, owned: true, red: 0xcc1111, blue: 0x1d4ed8, speed: 1.0, damage: 35 },
+    symbiote: { name: 'Shadow Symbiote', cost: 150, owned: false, red: 0x111827, blue: 0x374151, speed: 1.3, damage: 55 },
+    iron: { name: 'Iron Spider Armor', cost: 300, owned: false, red: 0x991b1b, blue: 0xf59e0b, speed: 1.45, damage: 75 },
+    suit2099: { name: 'Cyber 2099', cost: 500, owned: false, red: 0x1e3a8a, blue: 0xef4444, speed: 1.65, damage: 100 }
 };
 
-// --- SCENE, CAMERA, RENDERER ---
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa0c4e2);
-scene.fog = new THREE.FogExp2(0xa0c4e2, 0.005);
+scene.background = new THREE.Color(0x93c5fd);
+scene.fog = new THREE.FogExp2(0x93c5fd, 0.005);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 800);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
 container.appendChild(renderer.domElement);
 
-// Lighting
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.7);
 scene.add(hemiLight);
 
-const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.2);
-sunLight.position.set(120, 220, 80);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 10;
-sunLight.shadow.camera.far = 450;
-const shadowRange = 160;
-sunLight.shadow.camera.left = -shadowRange;
-sunLight.shadow.camera.right = shadowRange;
-sunLight.shadow.camera.top = shadowRange;
-sunLight.shadow.camera.bottom = -shadowRange;
-scene.add(sunLight);
+const sun = new THREE.DirectionalLight(0xfffbeb, 1.2);
+sun.position.set(100, 200, 80);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+const d = 160;
+sun.shadow.camera.left = -d; sun.shadow.camera.right = d;
+sun.shadow.camera.top = d; sun.shadow.camera.bottom = -d;
+scene.add(sun);
 
-// --- PROCEDURAL TEXTURES (Smooth Windows & Asphalts) ---
-function createFacadeTexture() {
+function createBuildingTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 128;
+    canvas.height = 128;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, 0, 256, 256);
-    
-    // Windows grid
-    ctx.fillStyle = '#93c5fd';
-    for(let y = 16; y < 256; y += 36) {
-        for(let x = 16; x < 256; x += 36) {
-            ctx.fillStyle = Math.random() > 0.3 ? '#bae6fd' : '#1e293b';
-            ctx.fillRect(x, y, 22, 22);
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = '#bae6fd';
+    for (let y = 8; y < 128; y += 24) {
+        for (let x = 8; x < 128; x += 24) {
+            ctx.fillRect(x, y, 14, 14);
         }
     }
     const tex = new THREE.CanvasTexture(canvas);
@@ -283,166 +279,213 @@ function createFacadeTexture() {
     tex.wrapT = THREE.RepeatWrapping;
     return tex;
 }
+const windowTexture = createBuildingTexture();
 
-const buildingTex = createFacadeTexture();
-
-// --- PROCEDURAL CITY GENERATION ---
 const buildings = [];
-const cityDim = 12;
-const spacing = 38;
+const cityGrid = 10;
+const blockSpacing = 42;
 
-// Ground plane
-const groundGeo = new THREE.PlaneGeometry(cityDim * spacing * 2, cityDim * spacing * 2);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x181e29, roughness: 0.85 });
-const ground = new THREE.Mesh(groundGeo, groundMat);
+const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(cityGrid * blockSpacing * 2.5, cityGrid * blockSpacing * 2.5),
+    new THREE.MeshStandardMaterial({ color: 0x1e2430, roughness: 0.9 })
+);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-for (let x = -cityDim / 2; x < cityDim / 2; x++) {
-    for (let z = -cityDim / 2; z < cityDim / 2; z++) {
-        if (Math.abs(x) <= 1 && Math.abs(z) <= 1) continue; // Open center plaza
-        if (Math.random() > 0.35) {
-            const h = 40 + Math.random() * 90;
-            const w = spacing * 0.72;
-            const texClone = buildingTex.clone();
-            texClone.repeat.set(2, Math.floor(h / 10));
-            texClone.needsUpdate = true;
+for (let x = -cityGrid / 2; x <= cityGrid / 2; x++) {
+    for (let z = -cityGrid / 2; z <= cityGrid / 2; z++) {
+        if (Math.abs(x) <= 1 && Math.abs(z) <= 1) continue;
+        if (Math.random() > 0.25) {
+            const h = 35 + Math.random() * 85;
+            const w = blockSpacing * 0.72;
+            const tex = windowTexture.clone();
+            tex.repeat.set(2, Math.floor(h / 8));
+            tex.needsUpdate = true;
 
-            const bMat = new THREE.MeshStandardMaterial({ 
-                color: 0xffffff,
-                map: texClone,
-                roughness: 0.35, 
-                metalness: 0.25 
+            const mat = new THREE.MeshStandardMaterial({
+                map: tex,
+                roughness: 0.3,
+                metalness: 0.2
             });
-            const building = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), bMat);
-            building.position.set(x * spacing, h / 2, z * spacing);
-            building.castShadow = true;
-            building.receiveShadow = true;
-            scene.add(building);
-            buildings.push(building);
+            const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat);
+            b.position.set(x * blockSpacing, h / 2, z * blockSpacing);
+            b.castShadow = true;
+            b.receiveShadow = true;
+            scene.add(b);
+            buildings.push(b);
         }
     }
 }
 
-// --- SPIDER-MAN CHARACTER RIG ---
-const playerGroup = new THREE.Group();
-playerGroup.position.set(0, 2, 0);
-scene.add(playerGroup);
+const player = new THREE.Group();
+player.position.set(0, 2, 0);
+scene.add(player);
 
-// Suit Materials
-const primMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.prim, roughness: 0.4 });
-const secMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.sec, roughness: 0.4 });
-const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.7 });
+const redSuitMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.red, roughness: 0.35 });
+const blueSuitMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.blue, roughness: 0.35 });
+const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
-// Torso / Chest
-const chest = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.8, 0.4), primMat);
-chest.position.y = 1.35;
-chest.castShadow = true;
-playerGroup.add(chest);
+const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.85, 0.38), redSuitMat);
+torso.position.y = 1.35;
+torso.castShadow = true;
+player.add(torso);
 
-const waist = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.4, 0.36), secMat);
-waist.position.y = 0.9;
-waist.castShadow = true;
-playerGroup.add(waist);
+const hip = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.3, 0.35), blueSuitMat);
+hip.position.y = 0.85;
+player.add(hip);
 
-// Head & Eyes
-const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), primMat);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 16), redSuitMat);
 head.position.y = 1.95;
-head.scale.set(0.9, 1.1, 1.0);
+head.scale.set(0.9, 1.1, 0.95);
 head.castShadow = true;
-playerGroup.add(head);
+player.add(head);
 
-const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.04), eyeMat);
-eyeL.position.set(0.1, 1.98, 0.26);
-eyeL.rotation.z = -0.2;
-const eyeR = eyeL.clone();
-eyeR.position.x = -0.1;
-eyeR.rotation.z = 0.2;
-playerGroup.add(eyeL, eyeR);
+const leftEye = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.04), eyeMat);
+leftEye.position.set(0.09, 1.98, 0.25);
+leftEye.rotation.z = -0.2;
+const rightEye = leftEye.clone();
+rightEye.position.x = -0.09;
+rightEye.rotation.z = 0.2;
+player.add(leftEye, rightEye);
 
-// Arms (Hierarchical for smooth punching)
-const leftArmGroup = new THREE.Group();
-leftArmGroup.position.set(0.5, 1.6, 0);
-const lArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.22), secMat);
-lArmMesh.position.y = -0.35;
-leftArmGroup.add(lArmMesh);
-playerGroup.add(leftArmGroup);
+const leftArmPivot = new THREE.Group();
+leftArmPivot.position.set(0.48, 1.65, 0);
+const leftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.75, 0.2), blueSuitMat);
+leftArmMesh.position.y = -0.35;
+leftArmPivot.add(leftArmMesh);
+player.add(leftArmPivot);
 
-const rightArmGroup = new THREE.Group();
-rightArmGroup.position.set(-0.5, 1.6, 0);
-const rArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.22), secMat);
-rArmMesh.position.y = -0.35;
-rightArmGroup.add(rArmMesh);
-playerGroup.add(rightArmGroup);
+const rightArmPivot = new THREE.Group();
+rightArmPivot.position.set(-0.48, 1.65, 0);
+const rightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.75, 0.2), blueSuitMat);
+rightArmMesh.position.y = -0.35;
+rightArmPivot.add(rightArmMesh);
+player.add(rightArmPivot);
 
-// Legs
-const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.8, 0.25), secMat);
-leftLeg.position.set(0.22, 0.4, 0);
-const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.8, 0.25), secMat);
-rightLeg.position.set(-0.22, 0.4, 0);
-playerGroup.add(leftLeg, rightLeg);
+const leftLegPivot = new THREE.Group();
+leftLegPivot.position.set(0.2, 0.75, 0);
+const leftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.8, 0.22), blueSuitMat);
+leftLegMesh.position.y = -0.4;
+leftLegPivot.add(leftLegMesh);
+player.add(leftLegPivot);
 
-// --- SMOOTH WEB SYSTEM (3D Curved Tube) ---
+const rightLegPivot = new THREE.Group();
+rightLegPivot.position.set(-0.2, 0.75, 0);
+const rightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.8, 0.22), blueSuitMat);
+rightLegMesh.position.y = -0.4;
+rightLegPivot.add(rightLegMesh);
+player.add(rightLegPivot);
+
 const webCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()
 ]);
-const webGeo = new THREE.TubeGeometry(webCurve, 16, 0.04, 6, false);
-const webMat = new THREE.MeshStandardMaterial({ 
-    color: 0xffffff, 
-    emissive: 0x93c5fd, 
-    emissiveIntensity: 0.6,
-    roughness: 0.1 
+let webGeo = new THREE.TubeGeometry(webCurve, 16, 0.04, 6, false);
+const webMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0x93c5fd,
+    emissiveIntensity: 0.5,
+    roughness: 0.2
 });
 const webMesh = new THREE.Mesh(webGeo, webMat);
 webMesh.visible = false;
 scene.add(webMesh);
 
-function updateWebGeometry(start, end) {
-    // Generate curved web shape
-    const mid = start.clone().lerp(end, 0.5);
-    mid.y -= 1.8; // Sagging pendulum curve effect
-    webCurve.points = [start, mid, end];
+function updateWebRope(handPos, anchorPos) {
+    const mid = handPos.clone().lerp(anchorPos, 0.5);
+    mid.y -= 1.8;
+    webCurve.points = [handPos, mid, anchorPos];
     webMesh.geometry.dispose();
-    webMesh.geometry = new THREE.TubeGeometry(webCurve, 16, 0.045, 6, false);
+    webMesh.geometry = new THREE.TubeGeometry(webCurve, 16, 0.04, 6, false);
 }
 
-// --- ENEMIES & COMBAT SYSTEM ---
+function createHumanThug() {
+    const group = new THREE.Group();
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xe0a899 });
+    const clothesMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.8 });
+    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+
+    const torsoM = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.8, 0.35), clothesMat);
+    torsoM.position.y = 1.3;
+    torsoM.castShadow = true;
+    group.add(torsoM);
+
+    const headM = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), skinMat);
+    headM.position.y = 1.85;
+    headM.castShadow = true;
+    group.add(headM);
+
+    const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), skinMat);
+    lArm.position.set(0.42, 1.3, 0);
+    const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), skinMat);
+    rArm.position.set(-0.42, 1.3, 0);
+    group.add(lArm, rArm);
+
+    const lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.75, 0.2), pantsMat);
+    lLeg.position.set(0.18, 0.45, 0);
+    const rLeg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.75, 0.2), pantsMat);
+    rLeg.position.set(-0.18, 0.45, 0);
+    group.add(lLeg, rLeg);
+
+    const hpCanvas = document.createElement('canvas');
+    hpCanvas.width = 64; hpCanvas.height = 16;
+    const hpTex = new THREE.CanvasTexture(hpCanvas);
+    const hpSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: hpTex }));
+    hpSprite.position.y = 2.3;
+    hpSprite.scale.set(1.4, 0.35, 1);
+    group.add(hpSprite);
+
+    return { group, hpCanvas, hpTex, hpSprite };
+}
+
 const enemies = [];
 let activeCrime = false;
+
+function drawHealthBar(enemy) {
+    const ctx = enemy.hpCanvas.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 64, 16);
+    ctx.fillStyle = '#ef4444';
+    const fill = (enemy.hp / enemy.maxHp) * 60;
+    ctx.fillRect(2, 2, Math.max(0, fill), 12);
+    enemy.hpTex.needsUpdate = true;
+}
 
 function spawnCrime() {
     if (activeCrime || buildings.length === 0) return;
     const b = buildings[Math.floor(Math.random() * buildings.length)];
-    const center = new THREE.Vector3(b.position.x + (Math.random() > 0.5 ? 20 : -20), 0.9, b.position.z);
-    
+    const spawnPos = new THREE.Vector3(b.position.x + 22, 0, b.position.z + 10);
+
     for (let i = 0; i < 3; i++) {
-        const tGroup = new THREE.Group();
-        const tMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.5), new THREE.MeshStandardMaterial({ color: 0x475569 }));
-        tMesh.position.y = 0.9;
-        tMesh.castShadow = true;
-        tGroup.add(tMesh);
-        tGroup.position.copy(center).add(new THREE.Vector3((Math.random() - 0.5) * 8, 0, (Math.random() - 0.5) * 8));
-        scene.add(tGroup);
-        enemies.push({ mesh: tGroup, hp: 70 });
+        const thug = createHumanThug();
+        thug.group.position.copy(spawnPos).add(new THREE.Vector3((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6));
+        scene.add(thug.group);
+        const obj = {
+            mesh: thug.group,
+            hpCanvas: thug.hpCanvas,
+            hpTex: thug.hpTex,
+            hp: 80,
+            maxHp: 80
+        };
+        drawHealthBar(obj);
+        enemies.push(obj);
     }
     activeCrime = true;
     document.getElementById('crime-alert').style.display = 'block';
     document.getElementById('thug-count').innerText = enemies.length;
 }
-setTimeout(spawnCrime, 2500);
+setTimeout(spawnCrime, 2000);
 
-// --- INPUT & CONTROLS ---
 const keys = {};
-let cameraYaw = 0;
-let cameraPitch = 0;
-const playerVel = new THREE.Vector3();
+let camPitch = 0.15;
+let camYaw = 0;
+const velocity = new THREE.Vector3();
 let isGrounded = false;
 
 window.addEventListener('keydown', e => {
     keys[e.code] = true;
     if (e.code === 'KeyE') startSwing();
-    if (e.code === 'KeyF') triggerAttack();
+    if (e.code === 'KeyF') attack();
     if (e.code === 'KeyU') toggleShop();
 });
 window.addEventListener('keyup', e => {
@@ -454,7 +497,7 @@ window.addEventListener('mousedown', e => {
         document.body.requestPointerLock();
         return;
     }
-    if (e.button === 0) triggerAttack();
+    if (e.button === 0) attack();
     if (e.button === 2) startSwing();
 });
 window.addEventListener('mouseup', e => {
@@ -464,46 +507,55 @@ window.addEventListener('contextmenu', e => e.preventDefault());
 
 window.addEventListener('mousemove', e => {
     if (document.pointerLockElement === document.body) {
-        cameraYaw -= e.movementX * 0.0025;
-        cameraPitch -= e.movementY * 0.0025;
-        cameraPitch = Math.max(-1.1, Math.min(1.1, cameraPitch));
+        camYaw -= e.movementX * 0.0028;
+        camPitch -= e.movementY * 0.0024;
+        camPitch = Math.max(-1.1, Math.min(1.1, camPitch));
     }
 });
 
-// Raycaster for aiming webs & walls
 const aimRay = new THREE.Raycaster();
-function getTargetBuilding() {
+function getAimTarget() {
     aimRay.setFromCamera(new THREE.Vector2(0, 0), camera);
     const hits = aimRay.intersectObjects(buildings);
-    return hits.length > 0 && hits[0].distance < 140 ? hits[0] : null;
+    return hits.length > 0 && hits[0].distance < 130 ? hits[0] : null;
 }
 
-// Raycast surrounding walls for accurate climbing
-function getTouchingWall() {
-    const directions = [
+function getNearbyWall() {
+    const dirs = [
         new THREE.Vector3(0, 0, -1),
         new THREE.Vector3(0, 0, 1),
         new THREE.Vector3(-1, 0, 0),
         new THREE.Vector3(1, 0, 0)
     ];
-    for (let dir of directions) {
-        const ray = new THREE.Raycaster(playerGroup.position.clone().add(new THREE.Vector3(0, 1, 0)), dir, 0, 1.4);
+    for (let d of dirs) {
+        const ray = new THREE.Raycaster(player.position.clone().add(new THREE.Vector3(0, 1, 0)), d, 0, 1.5);
         const hits = ray.intersectObjects(buildings);
-        if (hits.length > 0) {
-            return hits[0];
-        }
+        if (hits.length > 0) return hits[0];
     }
     return null;
 }
 
-// --- CORE ACTIONS ---
 function startSwing() {
     if (state.isSwinging) return;
-    const target = getTargetBuilding();
-    if (target && target.point.y > playerGroup.position.y + 4) {
+    let target = getAimTarget();
+    
+    if (!target) {
+        let bestDist = 999;
+        buildings.forEach(b => {
+            const dist = player.position.distanceTo(b.position);
+            if (dist > 15 && dist < 70 && b.position.y * 2 > player.position.y + 10) {
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    target = { point: new THREE.Vector3(b.position.x, b.position.y + 15, b.position.z) };
+                }
+            }
+        });
+    }
+
+    if (target && target.point.y > player.position.y + 3) {
         state.isSwinging = true;
         state.swingAnchor.copy(target.point);
-        state.swingRadius = playerGroup.position.distanceTo(target.point);
+        state.swingLength = Math.max(8, player.position.distanceTo(target.point) * 0.85);
         webMesh.visible = true;
     }
 }
@@ -512,24 +564,23 @@ function releaseSwing() {
     if (state.isSwinging) {
         state.isSwinging = false;
         webMesh.visible = false;
-        // Boost forward on release
-        const forward = new THREE.Vector3(0, 0.4, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
-        playerVel.add(forward.multiplyScalar(22));
+        const forward = new THREE.Vector3(0, 0.45, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
+        velocity.add(forward.multiplyScalar(24));
     }
 }
 
-function triggerAttack() {
-    state.attackAnim = 1.0; // Trigger punch animation
+function attack() {
+    state.attackAnimTimer = 1.0;
     const suit = SUITS[state.equippedSuit];
 
-    // Find closest thug within range
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
-        const dist = playerGroup.position.distanceTo(e.mesh.position);
-        if (dist < 6.0) {
+        const dist = player.position.distanceTo(e.mesh.position);
+        if (dist < 6.5) {
             e.hp -= suit.damage;
-            // Knockback impulse
-            const knock = e.mesh.position.clone().sub(playerGroup.position).normalize().multiplyScalar(10);
+            drawHealthBar(e);
+
+            const knock = e.mesh.position.clone().sub(player.position).normalize().multiplyScalar(10);
             e.mesh.position.add(knock);
 
             if (e.hp <= 0) {
@@ -547,19 +598,18 @@ function triggerAttack() {
         state.coins += 150;
         updateHud();
         document.getElementById('crime-alert').style.display = 'none';
-        showMsg('Mission Complete: +150 Coins Awarded!');
-        setTimeout(spawnCrime, 6000);
+        showToast('Area Secured! Bonus: +150 Coins');
+        setTimeout(spawnCrime, 5000);
     }
 }
 
-function showMsg(text) {
+function showToast(text) {
     const el = document.getElementById('action-msg');
     el.innerText = text;
     el.style.display = 'block';
-    setTimeout(() => { el.style.display = 'none'; }, 2500);
+    setTimeout(() => { el.style.display = 'none'; }, 2400);
 }
 
-// --- SUIT SHOP SYSTEM ---
 function toggleShop() {
     state.shopOpen = !state.shopOpen;
     document.getElementById('shop-modal').style.display = state.shopOpen ? 'block' : 'none';
@@ -593,16 +643,15 @@ window.buySuit = function(k) {
         s.owned = true;
         equipSuit(k);
     } else {
-        alert("Not enough coins! Stop crimes to earn more.");
+        alert("Not enough coins! Stop crimes in the city to earn coins.");
     }
 };
 
 window.equipSuit = function(k) {
     state.equippedSuit = k;
     const s = SUITS[k];
-    primMat.color.setHex(s.prim);
-    secMat.color.setHex(s.sec);
-    eyeMat.emissive.setHex(s.emissive);
+    redSuitMat.color.setHex(s.red);
+    blueSuitMat.color.setHex(s.blue);
     updateHud();
     renderShop();
 };
@@ -613,117 +662,137 @@ function updateHud() {
     document.getElementById('val-suit').innerText = SUITS[state.equippedSuit].name;
 }
 
-// --- GAME LOOP & PHYSICS ENGINE ---
 const clock = new THREE.Clock();
 
 function animate() {
     requestAnimationFrame(animate);
     const dt = Math.min(clock.getDelta(), 0.1);
-    const activeSuit = SUITS[state.equippedSuit];
+    const suit = SUITS[state.equippedSuit];
 
-    // Crosshair target lock update
-    const target = getTargetBuilding();
-    document.getElementById('crosshair').className = target ? 'valid-target' : '';
+    const aimHit = getAimTarget();
+    const crosshair = document.getElementById('crosshair');
+    const ring = document.getElementById('target-ring');
+    if (aimHit) {
+        crosshair.className = 'valid-target';
+        ring.style.display = 'block';
+        const scrPos = aimHit.point.clone().project(camera);
+        ring.style.left = `${(scrPos.x * 0.5 + 0.5) * window.innerWidth}px`;
+        ring.style.top = `${(-scrPos.y * 0.5 + 0.5) * window.innerHeight}px`;
+    } else {
+        crosshair.className = '';
+        ring.style.display = 'none';
+    }
 
-    // Check if enemy is nearby to show attack prompt
-    let enemyNear = false;
+    let thugNear = false;
     enemies.forEach(e => {
-        if (playerGroup.position.distanceTo(e.mesh.position) < 7.0) enemyNear = true;
+        if (player.position.distanceTo(e.mesh.position) < 7.0) thugNear = true;
     });
-    document.getElementById('combat-indicator').style.display = enemyNear ? 'block' : 'none';
+    document.getElementById('combat-indicator').style.display = thugNear ? 'block' : 'none';
 
-    // Movement Vectors
-    const moveInput = new THREE.Vector3();
-    if (keys['KeyW']) moveInput.z -= 1;
-    if (keys['KeyS']) moveInput.z += 1;
-    if (keys['KeyA']) moveInput.x -= 1;
-    if (keys['KeyD']) moveInput.x += 1;
-    moveInput.normalize();
+    const inputDir = new THREE.Vector3();
+    if (keys['KeyW'] || keys['ArrowUp']) inputDir.z -= 1;
+    if (keys['KeyS'] || keys['ArrowDown']) inputDir.z += 1;
+    if (keys['KeyA'] || keys['ArrowLeft']) inputDir.x -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) inputDir.x += 1;
+    inputDir.normalize();
 
-    const worldMove = moveInput.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
-    const wallHit = getTouchingWall();
+    const worldInput = inputDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
+    const wall = getNearbyWall();
 
-    // 1. SWINGING STATE
     if (state.isSwinging) {
-        const toAnchor = state.swingAnchor.clone().sub(playerGroup.position);
+        state.isClimbing = false;
+        const toAnchor = state.swingAnchor.clone().sub(player.position);
         const dist = toAnchor.length();
 
-        // Pendulum tension math
-        playerVel.y -= 28 * dt; // Gravity
-        if (dist > state.swingRadius) {
-            const pullDir = toAnchor.clone().normalize();
-            const velAlongRope = playerVel.dot(pullDir);
-            if (velAlongRope < 0) playerVel.sub(pullDir.multiplyScalar(velAlongRope));
-            playerVel.add(pullDir.multiplyScalar((dist - state.swingRadius) * 20 * dt));
+        velocity.y -= 25 * dt;
+
+        if (dist > state.swingLength) {
+            const ropeDir = toAnchor.clone().normalize();
+            const vDot = velocity.dot(ropeDir);
+            if (vDot < 0) velocity.sub(ropeDir.multiplyScalar(vDot));
+            velocity.add(ropeDir.multiplyScalar((dist - state.swingLength) * 22 * dt));
         }
 
-        // Steer swing
-        playerVel.add(worldMove.multiplyScalar(15 * dt));
+        velocity.add(worldInput.multiplyScalar(18 * dt));
 
-        // Update web visual
-        const handPos = playerGroup.position.clone().add(new THREE.Vector3(0.4, 1.4, 0));
-        updateWebGeometry(handPos, state.swingAnchor);
+        if (keys['Space']) releaseSwing();
 
-    // 2. WALL CLIMBING STATE
-    } else if (wallHit && (keys['KeyW'] || keys['Space'])) {
+        const hand = player.position.clone().add(new THREE.Vector3(0.3, 1.5, 0));
+        updateWebRope(hand, state.swingAnchor);
+
+    } else if (wall && (keys['KeyW'] || keys['ArrowUp'] || keys['Space'])) {
         state.isClimbing = true;
-        playerVel.y = 14 * activeSuit.speed;
-        playerVel.x = -wallHit.face.normal.x * 2;
-        playerVel.z = -wallHit.face.normal.z * 2;
-        playerGroup.rotation.y = Math.atan2(-wallHit.face.normal.x, -wallHit.face.normal.z);
+        velocity.y = 16 * suit.speed;
+        velocity.x = worldInput.x * 6;
+        velocity.z = worldInput.z * 6;
 
-    // 3. REGULAR LOCOMOTION
+        if (keys['Space']) {
+            velocity.y = 18;
+            velocity.add(wall.face.normal.clone().multiplyScalar(16));
+        }
     } else {
         state.isClimbing = false;
-        const targetSpeed = 22 * activeSuit.speed;
-        playerVel.x = THREE.MathUtils.lerp(playerVel.x, worldMove.x * targetSpeed, 10 * dt);
-        playerVel.z = THREE.MathUtils.lerp(playerVel.z, worldMove.z * targetSpeed, 10 * dt);
-        playerVel.y -= 32 * dt; // Normal Gravity
+        const moveSpeed = 22 * suit.speed;
+        velocity.x = THREE.MathUtils.lerp(velocity.x, worldInput.x * moveSpeed, 10 * dt);
+        velocity.z = THREE.MathUtils.lerp(velocity.z, worldInput.z * moveSpeed, 10 * dt);
+        velocity.y -= 34 * dt;
 
         if (isGrounded && keys['Space']) {
-            playerVel.y = 15;
+            velocity.y = 15;
             isGrounded = false;
         }
 
-        if (worldMove.lengthSq() > 0.01) {
-            const targetRot = Math.atan2(worldMove.x, worldMove.z);
-            playerGroup.rotation.y = THREE.MathUtils.lerp(playerGroup.rotation.y, targetRot, 12 * dt);
+        if (worldInput.lengthSq() > 0.01) {
+            const heading = Math.atan2(worldInput.x, worldInput.z);
+            player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, heading, 12 * dt);
         }
     }
 
-    // Apply Velocity
-    playerGroup.position.addScaledVector(playerVel, dt);
+    player.position.addScaledVector(velocity, dt);
 
-    // Ground Floor Constraint
-    if (playerGroup.position.y <= 0) {
-        playerGroup.position.y = 0;
-        playerVel.y = 0;
+    if (player.position.y <= 0) {
+        player.position.y = 0;
+        velocity.y = 0;
         isGrounded = true;
     }
 
-    // Attack Punch Animation
-    if (state.attackAnim > 0) {
-        state.attackAnim -= dt * 4;
-        rightArmGroup.rotation.x = -Math.PI / 2 * Math.sin(state.attackAnim * Math.PI);
-    } else {
-        rightArmGroup.rotation.x = 0;
+    const isMoving = isGrounded && worldInput.lengthSq() > 0.01;
+    if (isMoving) {
+        state.walkAnim += dt * 12;
+        leftLegPivot.rotation.x = Math.sin(state.walkAnim) * 0.7;
+        rightLegPivot.rotation.x = -Math.sin(state.walkAnim) * 0.7;
+        leftArmPivot.rotation.x = -Math.sin(state.walkAnim) * 0.5;
+        rightArmPivot.rotation.x = Math.sin(state.walkAnim) * 0.5;
+    } else if (!state.isSwinging) {
+        leftLegPivot.rotation.x = 0;
+        rightLegPivot.rotation.x = 0;
+        leftArmPivot.rotation.x = 0;
+        rightArmPivot.rotation.x = 0;
     }
 
-    // Camera follow (Third Person with Pitch & Yaw)
-    const camOffset = new THREE.Vector3(0, 2.5, 7.0);
-    camOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), cameraPitch);
-    camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
-    camera.position.copy(playerGroup.position).add(camOffset);
-    camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.6, playerGroup.position.z);
+    if (state.attackAnimTimer > 0) {
+        state.attackAnimTimer -= dt * 4;
+        rightArmPivot.rotation.x = -Math.PI / 2 * Math.sin(state.attackAnimTimer * Math.PI);
+    }
 
-    // Thug AI Behaviour
+    if (state.isSwinging) {
+        leftArmPivot.rotation.x = -Math.PI * 0.85;
+        player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, camYaw, 10 * dt);
+    }
+
+    const camOffset = new THREE.Vector3(0, 2.4, 7.0);
+    camOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), camPitch);
+    camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
+    camera.position.copy(player.position).add(camOffset);
+    camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
+
     enemies.forEach(e => {
-        const dist = e.mesh.position.distanceTo(playerGroup.position);
-        if (dist < 40 && dist > 1.8) {
-            const dir = playerGroup.position.clone().sub(e.mesh.position).normalize();
+        const d = e.mesh.position.distanceTo(player.position);
+        if (d < 45 && d > 1.6) {
+            const dir = player.position.clone().sub(e.mesh.position).normalize();
             dir.y = 0;
-            e.mesh.position.add(dir.multiplyScalar(4 * dt));
-            e.mesh.lookAt(playerGroup.position.x, e.mesh.position.y, playerGroup.position.z);
+            e.mesh.position.add(dir.multiplyScalar(4.5 * dt));
+            e.mesh.lookAt(player.position.x, e.mesh.position.y, player.position.z);
         }
     });
 
