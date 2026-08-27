@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Web-Slinger 3D: Rooftop & Swing Overhaul</title>
+    <title>Web-Slinger 3D: Smooth Locomotion & Expressive Rigging</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
         html, body { width: 100%; height: 100%; overscroll-behavior: none; }
@@ -32,7 +32,6 @@
         .hud-val { font-size: 16px; font-weight: 800; color: #fbbf24; }
         .hud-hp { color: #ef4444; }
         .hud-suit { color: #38bdf8; }
-        .hud-combo { color: #f472b6; }
 
         #quest-card {
             position: absolute;
@@ -98,7 +97,6 @@
             color: #fff;
             font-weight: 900;
             font-size: 13px;
-            letter-spacing: 0.5px;
             padding: 8px 18px;
             border-radius: 20px;
             pointer-events: none;
@@ -471,7 +469,6 @@
         <div>Health: <span id="val-hp" class="hud-val hud-hp">100 / 100</span></div>
         <div>Coins: <span id="val-coins" class="hud-val">100</span> 🪙</div>
         <div>Suit: <span id="val-suit" class="hud-val hud-suit">Advanced Hero</span></div>
-        <div id="combo-row" style="display:none">Combo: <span id="val-combo" class="hud-val hud-combo">x1</span></div>
     </div>
 </div>
 
@@ -487,11 +484,11 @@
 
 <div id="controls-card">
     <b>Controls:</b><br>
-    • <b>W, A, S, D</b> : Move & Climb Rooftops/Walls<br>
-    • <b>Shift</b> : Hold to Run<br>
-    • <b>SPACE</b> : Jump / Boost Release from Swing<br>
-    • <b>Hold E or Right-Click</b> : Web-Swing (aim at a building!)<br>
-    • <b>F or Left-Click</b> : Punch Combo (hit repeatedly!)<br>
+    • <b>W, A, S, D</b> : Smooth Directional Movement<br>
+    • <b>Shift</b> : Hold to Sprint<br>
+    • <b>SPACE</b> : Jump / Release Swing<br>
+    • <b>Hold E or Right-Click</b> : Web-Swing<br>
+    • <b>F or Left-Click</b> : Multi-Combo Punch/Kick<br>
     • <b>U</b> : Suit Upgrades Shop<br>
     • <b>Click Screen</b> : Lock Mouse / Free Look
 </div>
@@ -553,14 +550,11 @@ const state = {
     isSwinging: false,
     swingAnchor: new THREE.Vector3(),
     swingLength: 0,
-    isClimbing: false,
     isRunning: false,
     shopOpen: false,
     attackAnimTimer: 0,
     attackPoseIndex: 0,
     walkAnim: 0,
-    comboStep: 0,
-    comboWindow: 0,
     attackCooldown: 0,
     activeQuestIndex: 0,
     questProgress: 0,
@@ -676,7 +670,6 @@ function updateCutscene(dt) {
 document.getElementById('cutscene-skip').addEventListener('click', endCutscene);
 document.getElementById('cutscene-skip').addEventListener('touchstart', e => { e.preventDefault(); endCutscene(); }, { passive: false });
 
-/* Story Cutscenes */
 function triggerIntroCutscene() {
     const startPos = player.position.clone();
     playCutscene([
@@ -726,7 +719,7 @@ const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.7);
 scene.add(hemiLight);
 
 /* =========================================================
-   CITY & COLLISIONS
+   CITY & ENVIRONMENT
 ========================================================= */
 const cityGrid = 15;
 const blockSpacing = 48;
@@ -785,11 +778,7 @@ for (let x = -cityGrid / 2; x <= cityGrid / 2; x++) {
             tex.repeat.set(2, Math.floor(h / 8));
             tex.needsUpdate = true;
 
-            const mat = new THREE.MeshStandardMaterial({
-                map: tex,
-                roughness: 0.35,
-                metalness: 0.2
-            });
+            const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.35, metalness: 0.2 });
             const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat);
             const px = x * blockSpacing, pz = z * blockSpacing;
             b.position.set(px, h / 2, pz);
@@ -799,7 +788,6 @@ for (let x = -cityGrid / 2; x <= cityGrid / 2; x++) {
 
             b.userData.halfW = w / 2;
             b.userData.height = h;
-            b.userData.cullRadiusSq = (w / 2 + 8) * (w / 2 + 8);
             b.userData.box = new THREE.Box3(
                 new THREE.Vector3(px - w / 2, 0, pz - w / 2),
                 new THREE.Vector3(px + w / 2, h, pz + w / 2)
@@ -810,7 +798,7 @@ for (let x = -cityGrid / 2; x <= cityGrid / 2; x++) {
 }
 
 /* =========================================================
-   HERO SUIT TEXTURES
+   HERO TEXTURES
 ========================================================= */
 function makeWebSuitTexture(baseColor, webColor) {
     const size = 256;
@@ -889,10 +877,10 @@ function makeSpiderEmblemTexture() {
 }
 
 /* =========================================================
-   HERO CHARACTER
+   ARTICULATED HERO RIG & SEGMENTED LIMBS
 ========================================================= */
 const player = new THREE.Group();
-player.position.set(0, 2, 0);
+player.position.set(0, 0, 0);
 scene.add(player);
 
 let suitTexture = makeWebSuitTexture(SUITS.classic.primary, SUITS.classic.web);
@@ -900,6 +888,7 @@ const primarySuitMat = new THREE.MeshStandardMaterial({ map: suitTexture, roughn
 const blueSuitMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.blue, roughness: 0.35, metalness: 0.15 });
 const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xbfe8ff, emissiveIntensity: 0.9, roughness: 0.2 });
 
+// Torso / Chest / Spine
 const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.88, 0.4), primarySuitMat);
 torso.position.y = 1.35;
 torso.castShadow = true;
@@ -920,11 +909,6 @@ const hip = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.3, 0.36), blueSuitMat);
 hip.position.y = 0.85;
 player.add(hip);
 
-const beltMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
-const belt = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.09, 0.4), beltMat);
-belt.position.y = 1.0;
-player.add(belt);
-
 const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 20, 20), primarySuitMat);
 head.position.y = 1.97;
 head.scale.set(0.92, 1.1, 0.96);
@@ -938,41 +922,63 @@ const rightEye = leftEye.clone();
 rightEye.position.x = -0.1;
 player.add(leftEye, rightEye);
 
-function makeLimb(w, h, d, mat) {
-    return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+// Articulated Arms (Upper arm + Lower arm joint)
+function createArm() {
+    const shoulder = new THREE.Group();
+    
+    const upperArm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.42, 0.2), primarySuitMat);
+    upperArm.position.y = -0.21;
+    upperArm.castShadow = true;
+    shoulder.add(upperArm);
+
+    const elbow = new THREE.Group();
+    elbow.position.y = -0.42;
+    shoulder.add(elbow);
+
+    const lowerArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.42, 0.18), primarySuitMat);
+    lowerArm.position.y = -0.21;
+    lowerArm.castShadow = true;
+    elbow.add(lowerArm);
+
+    return { shoulder, elbow };
 }
 
-const leftArmPivot = new THREE.Group();
-leftArmPivot.position.set(0.5, 1.66, 0);
-const leftArmMesh = makeLimb(0.21, 0.76, 0.21, primarySuitMat);
-leftArmMesh.position.y = -0.36;
-leftArmMesh.castShadow = true;
-leftArmPivot.add(leftArmMesh);
-player.add(leftArmPivot);
+const leftArm = createArm();
+leftArm.shoulder.position.set(0.48, 1.68, 0);
+player.add(leftArm.shoulder);
 
-const rightArmPivot = new THREE.Group();
-rightArmPivot.position.set(-0.5, 1.66, 0);
-const rightArmMesh = makeLimb(0.21, 0.76, 0.21, primarySuitMat);
-rightArmMesh.position.y = -0.36;
-rightArmMesh.castShadow = true;
-rightArmPivot.add(rightArmMesh);
-player.add(rightArmPivot);
+const rightArm = createArm();
+rightArm.shoulder.position.set(-0.48, 1.68, 0);
+player.add(rightArm.shoulder);
 
-const leftLegPivot = new THREE.Group();
-leftLegPivot.position.set(0.21, 0.75, 0);
-const leftLegMesh = makeLimb(0.23, 0.82, 0.23, blueSuitMat);
-leftLegMesh.position.y = -0.41;
-leftLegMesh.castShadow = true;
-leftLegPivot.add(leftLegMesh);
-player.add(leftLegPivot);
+// Articulated Legs (Upper leg + Lower leg joint)
+function createLeg() {
+    const hipJoint = new THREE.Group();
+    
+    const upperLeg = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.45, 0.23), blueSuitMat);
+    upperLeg.position.y = -0.225;
+    upperLeg.castShadow = true;
+    hipJoint.add(upperLeg);
 
-const rightLegPivot = new THREE.Group();
-rightLegPivot.position.set(-0.21, 0.75, 0);
-const rightLegMesh = makeLimb(0.23, 0.82, 0.23, blueSuitMat);
-rightLegMesh.position.y = -0.41;
-rightLegMesh.castShadow = true;
-rightLegPivot.add(rightLegMesh);
-player.add(rightLegPivot);
+    const knee = new THREE.Group();
+    knee.position.y = -0.45;
+    hipJoint.add(knee);
+
+    const lowerLeg = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.45, 0.21), primarySuitMat);
+    lowerLeg.position.y = -0.225;
+    lowerLeg.castShadow = true;
+    knee.add(lowerLeg);
+
+    return { hipJoint, knee };
+}
+
+const leftLeg = createLeg();
+leftLeg.hipJoint.position.set(0.21, 0.75, 0);
+player.add(leftLeg.hipJoint);
+
+const rightLeg = createLeg();
+rightLeg.hipJoint.position.set(-0.21, 0.75, 0);
+player.add(rightLeg.hipJoint);
 
 function applySuitVisuals(key) {
     const s = SUITS[key];
@@ -983,7 +989,7 @@ function applySuitVisuals(key) {
 }
 
 /* =========================================================
-   REALISTIC SMOOTH MULTI-STRAND WEB ROPE GEOMETRY
+   REALISTIC MULTI-STRAND WEB ROPE
 ========================================================= */
 const WEB_SEGMENTS = 28;
 const webGroup = new THREE.Group();
@@ -997,13 +1003,11 @@ const webMat = new THREE.MeshStandardMaterial({
     metalness: 0.1
 });
 
-// Central core strand
 const mainWebCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
 let mainWebGeo = new THREE.TubeGeometry(mainWebCurve, WEB_SEGMENTS, 0.045, 8, false);
 const mainWebMesh = new THREE.Mesh(mainWebGeo, webMat);
 webGroup.add(mainWebMesh);
 
-// 3 Spiral outer webbing strands for smooth realistic web structure
 const spiralStrands = [];
 for (let i = 0; i < 3; i++) {
     const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
@@ -1018,7 +1022,6 @@ function updateWebRope(handPos, anchorPos) {
     const points = [];
     const dist = handPos.distanceTo(anchorPos);
     
-    // Smooth catenary curve calculation
     for (let i = 0; i <= WEB_SEGMENTS; i++) {
         const t = i / WEB_SEGMENTS;
         const p = new THREE.Vector3().lerpVectors(handPos, anchorPos, t);
@@ -1031,7 +1034,6 @@ function updateWebRope(handPos, anchorPos) {
     mainWebMesh.geometry.dispose();
     mainWebMesh.geometry = new THREE.TubeGeometry(mainWebCurve, WEB_SEGMENTS, 0.042, 8, false);
 
-    // Dynamic spiral webbing strands
     for (let s = 0; s < spiralStrands.length; s++) {
         const strandPoints = [];
         const phaseShift = (s * Math.PI * 2) / 3;
@@ -1039,7 +1041,7 @@ function updateWebRope(handPos, anchorPos) {
         for (let i = 0; i <= WEB_SEGMENTS; i++) {
             const baseP = points[i];
             const t = i / WEB_SEGMENTS;
-            const radius = 0.12 * Math.sin(t * Math.PI); // Taper at endpoints
+            const radius = 0.12 * Math.sin(t * Math.PI);
             const angle = t * Math.PI * 12 + phaseShift;
             
             const offset = new THREE.Vector3(
@@ -1057,7 +1059,7 @@ function updateWebRope(handPos, anchorPos) {
 }
 
 /* =========================================================
-   ENEMIES & COMBAT SYSTEM
+   ENEMIES & COMBAT
 ========================================================= */
 const enemies = [];
 const enemyMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 });
@@ -1070,28 +1072,22 @@ function spawnCrimeEvent() {
     if (validBuildings.length === 0) return;
     
     const b = validBuildings[Math.floor(Math.random() * validBuildings.length)];
-    const roofY = b.userData.height + 1.1;
+    const roofY = b.userData.height;
 
     for (let i = 0; i < count; i++) {
         const eGroup = new THREE.Group();
         const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.4), enemyMat);
-        body.position.y = 0.9;
+        body.position.y = 0.5;
         eGroup.add(body);
         const eHead = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), enemyHeadMat);
-        eHead.position.y = 1.6;
+        eHead.position.y = 1.2;
         eGroup.add(eHead);
 
         const offsetX = (Math.random() - 0.5) * (b.userData.halfW * 1.2);
         const offsetZ = (Math.random() - 0.5) * (b.userData.halfW * 1.2);
         eGroup.position.set(b.position.x + offsetX, roofY, b.position.z + offsetZ);
 
-        eGroup.userData = {
-            hp: 60,
-            maxHp: 60,
-            homePos: eGroup.position.clone(),
-            attackTimer: 0
-        };
-
+        eGroup.userData = { hp: 60, maxHp: 60 };
         scene.add(eGroup);
         enemies.push(eGroup);
     }
@@ -1102,7 +1098,6 @@ function spawnCrimeEvent() {
 
 setInterval(spawnCrimeEvent, 12000);
 
-/* Target indicator ring */
 const targetRing = document.getElementById('target-ring');
 function updateTargetRing() {
     let closest = null, minDist = 22;
@@ -1128,10 +1123,9 @@ function updateTargetRing() {
 }
 
 /* =========================================================
-   PHYSICS & MOVEMENT ENGINE
+   INPUT & CONTROLS
 ========================================================= */
 const velocity = new THREE.Vector3();
-const inputDir = new THREE.Vector3();
 let isGrounded = false;
 
 const keys = {};
@@ -1145,7 +1139,6 @@ function handleActionKeys(code) {
     if (code === 'Space') jump();
 }
 
-/* Mouse Look & Pointer Lock */
 let yaw = 0, pitch = 0;
 document.addEventListener('mousemove', e => {
     if (document.pointerLockElement === document.body) {
@@ -1161,7 +1154,6 @@ container.addEventListener('click', () => {
     }
 });
 
-/* Touch Controls logic */
 let touchLookId = null, touchMoveId = null;
 let touchStartPos = { x: 0, y: 0 }, touchLookStart = { x: 0, y: 0 };
 const joyBase = document.getElementById('joystick-base');
@@ -1252,13 +1244,11 @@ window.addEventListener('mousedown', e => {
     if (e.button === 2) startSwing();
     if (e.button === 0 && !state.shopOpen) triggerAttack();
 });
-window.addEventListener('mouseup', e => {
-    if (e.button === 2) stopSwing();
-});
+window.addEventListener('mouseup', e => { if (e.button === 2) stopSwing(); });
 window.addEventListener('contextmenu', e => e.preventDefault());
 
 /* =========================================================
-   SWING & CORE PHYSICS LOGIC
+   SWING & LOCOMOTION PHYSICS
 ========================================================= */
 const raycaster = new THREE.Raycaster();
 
@@ -1289,7 +1279,7 @@ function stopSwing() {
     if (state.isSwinging) {
         state.isSwinging = false;
         webGroup.visible = false;
-        velocity.y += 6.0; // Boost momentum on release
+        velocity.y += 6.0;
     }
 }
 
@@ -1305,9 +1295,9 @@ function jump() {
 
 function triggerAttack() {
     if (state.attackCooldown > 0) return;
-    state.attackCooldown = 0.25;
+    state.attackCooldown = 0.28;
     state.attackPoseIndex = (state.attackPoseIndex + 1) % 3;
-    state.attackAnimTimer = 0.22;
+    state.attackAnimTimer = 0.28;
 
     const suit = SUITS[state.equippedSuit];
     let hitAny = false;
@@ -1316,7 +1306,6 @@ function triggerAttack() {
         if (player.position.distanceTo(e.position) < 3.8) {
             e.userData.hp -= suit.damage;
             hitAny = true;
-            // Knockback physics
             const kb = e.position.clone().sub(player.position).normalize().multiplyScalar(6);
             e.position.add(kb);
 
@@ -1337,7 +1326,7 @@ function triggerAttack() {
 }
 
 /* =========================================================
-   UI & SHOP MANAGEMENT
+   UI & SHOP
 ========================================================= */
 function showActionMsg(msg) {
     const el = document.getElementById('action-msg');
@@ -1412,7 +1401,6 @@ document.getElementById('chat-close').addEventListener('click', () => {
     document.getElementById('chat-panel').style.display = 'none';
 });
 
-/* Dispatch Chat system */
 function addChatMessage(author, text, isYou = false) {
     const box = document.getElementById('chat-messages');
     const msg = document.createElement('div');
@@ -1440,45 +1428,134 @@ function sendChatMessage() {
 }
 
 /* =========================================================
-   ANIMATION & GAME LOOP
+   ADVANCED PROCEDURAL ANIMATION CONTROLLER
 ========================================================= */
-let lastTime = performance.now();
+const poseTarget = {
+    torsoY: 1.35, torsoRotX: 0, torsoRotZ: 0,
+    headRotX: 0, headRotY: 0,
+    lShoulderX: 0, lShoulderY: 0, lShoulderZ: 0, lElbowX: -0.1,
+    rShoulderX: 0, rShoulderY: 0, rShoulderZ: 0, rElbowX: -0.1,
+    lHipX: 0, lHipZ: 0, lKneeX: 0.1,
+    rHipX: 0, rHipZ: 0, rKneeX: 0.1
+};
 
-function updatePlayerAnimation(dt) {
-    if (state.attackAnimTimer > 0) {
-        state.attackAnimTimer -= dt;
-        // Punching animation pose interpolation
-        rightArmPivot.rotation.x = -Math.PI / 1.8;
-        rightArmPivot.rotation.y = -0.6;
-        leftArmPivot.rotation.x = 0.4;
-        return;
-    }
+const poseCurrent = { ...poseTarget };
 
-    if (state.isSwinging) {
-        // Dynamic swing pose
-        leftArmPivot.rotation.x = -Math.PI / 1.1;
-        rightArmPivot.rotation.x = -Math.PI / 1.1;
-        leftLegPivot.rotation.x = 0.5;
-        rightLegPivot.rotation.x = -0.3;
-        return;
-    }
-
-    const horizSpeed = Math.hypot(velocity.x, velocity.z);
-    if (horizSpeed > 0.5 && isGrounded) {
-        state.walkAnim += dt * horizSpeed * 2.2;
-        leftArmPivot.rotation.x = Math.sin(state.walkAnim) * 0.7;
-        rightArmPivot.rotation.x = -Math.sin(state.walkAnim) * 0.7;
-        leftLegPivot.rotation.x = -Math.sin(state.walkAnim) * 0.7;
-        rightLegPivot.rotation.x = Math.sin(state.walkAnim) * 0.7;
-    } else {
-        // Idle animation resting pose
-        leftArmPivot.rotation.set(0, 0, 0);
-        rightArmPivot.rotation.set(0, 0, 0);
-        leftLegPivot.rotation.set(0, 0, 0);
-        rightLegPivot.rotation.set(0, 0, 0);
-    }
+function resetTargetPose() {
+    poseTarget.torsoY = 1.35; poseTarget.torsoRotX = 0; poseTarget.torsoRotZ = 0;
+    poseTarget.headRotX = 0; poseTarget.headRotY = 0;
+    poseTarget.lShoulderX = 0; poseTarget.lShoulderY = 0; poseTarget.lShoulderZ = 0; poseTarget.lElbowX = -0.1;
+    poseTarget.rShoulderX = 0; poseTarget.rShoulderY = 0; poseTarget.rShoulderZ = 0; poseTarget.rElbowX = -0.1;
+    poseTarget.lHipX = 0; poseTarget.lHipZ = 0; poseTarget.lKneeX = 0.1;
+    poseTarget.rHipX = 0; poseTarget.rHipZ = 0; poseTarget.rKneeX = 0.1;
 }
 
+function updateCharacterAnimations(dt, horizSpeed, isRunning, isGrounded, isSwinging) {
+    resetTargetPose();
+
+    if (state.attackAnimTimer > 0) {
+        state.attackAnimTimer -= dt;
+        const p = state.attackPoseIndex;
+        if (p === 0) {
+            // Right Straight Punch
+            poseTarget.torsoRotX = -0.15; poseTarget.torsoRotZ = 0.2;
+            poseTarget.rShoulderX = -Math.PI / 1.7; poseTarget.rShoulderY = -0.4; poseTarget.rElbowX = -0.2;
+            poseTarget.lShoulderX = 0.4; poseTarget.lElbowX = -1.2;
+            poseTarget.rHipX = 0.3; poseTarget.lHipX = -0.4;
+        } else if (p === 1) {
+            // Left Upper Hook
+            poseTarget.torsoRotX = -0.1; poseTarget.torsoRotZ = -0.25;
+            poseTarget.lShoulderX = -Math.PI / 1.6; poseTarget.lShoulderY = 0.5; poseTarget.lElbowX = -1.1;
+            poseTarget.rShoulderX = 0.3; poseTarget.rElbowX = -0.8;
+            poseTarget.lHipX = 0.4; poseTarget.rHipX = -0.3;
+        } else {
+            // High Kick
+            poseTarget.torsoRotX = 0.2; poseTarget.torsoRotZ = 0.3;
+            poseTarget.rHipX = -Math.PI / 1.8; poseTarget.rKneeX = 0.2;
+            poseTarget.lHipX = 0.3; poseTarget.lKneeX = 0.4;
+            poseTarget.lShoulderX = 0.5; poseTarget.rShoulderX = -0.6;
+        }
+    } else if (isSwinging) {
+        // Dynamic Swing Pose
+        poseTarget.torsoRotX = -0.45;
+        poseTarget.rShoulderX = -Math.PI / 1.05; poseTarget.rElbowX = -0.3;
+        poseTarget.lShoulderX = -Math.PI / 1.05; poseTarget.lElbowX = -0.3;
+        poseTarget.lHipX = 0.8; poseTarget.lKneeX = 1.2;
+        poseTarget.rHipX = -0.2; poseTarget.rKneeX = 0.4;
+    } else if (!isGrounded) {
+        // Jump / Air Leap Pose
+        poseTarget.torsoY = 1.32;
+        poseTarget.torsoRotX = -0.25;
+        poseTarget.lShoulderX = 0.8; poseTarget.lElbowX = -0.8;
+        poseTarget.rShoulderX = -1.2; poseTarget.rElbowX = -0.4;
+        poseTarget.lHipX = -0.6; poseTarget.lKneeX = 0.9;
+        poseTarget.rHipX = 0.7; poseTarget.rKneeX = 1.1;
+    } else if (horizSpeed > 0.2) {
+        // Walk / Run Locomotion Cycle
+        const freq = isRunning ? 13.5 : 8.5;
+        state.walkAnim += dt * freq;
+        const cycle = state.walkAnim;
+
+        const legAmp = isRunning ? 1.05 : 0.65;
+        const armAmp = isRunning ? 1.15 : 0.7;
+
+        // Legs opposing swinging with double-knee flex on back-stride
+        const lHip = Math.sin(cycle) * legAmp;
+        const rHip = -Math.sin(cycle) * legAmp;
+        poseTarget.lHipX = lHip;
+        poseTarget.rHipX = rHip;
+
+        poseTarget.lKneeX = lHip < 0 ? Math.abs(lHip) * 1.1 + 0.15 : 0.1;
+        poseTarget.rKneeX = rHip < 0 ? Math.abs(rHip) * 1.1 + 0.15 : 0.1;
+
+        // Arms opposing legs
+        poseTarget.lShoulderX = -Math.sin(cycle) * armAmp;
+        poseTarget.rShoulderX = Math.sin(cycle) * armAmp;
+        poseTarget.lElbowX = -0.3 - Math.abs(Math.sin(cycle)) * 0.4;
+        poseTarget.rElbowX = -0.3 - Math.abs(Math.cos(cycle)) * 0.4;
+
+        // Torso lean and hip bounce
+        poseTarget.torsoY = 1.35 + Math.abs(Math.sin(cycle * 2)) * (isRunning ? 0.08 : 0.04);
+        poseTarget.torsoRotX = isRunning ? -0.22 : -0.06;
+        poseTarget.torsoRotZ = Math.sin(cycle) * (isRunning ? 0.08 : 0.04);
+    } else {
+        // Idle breathing cycle
+        state.walkAnim += dt * 2.2;
+        const breath = Math.sin(state.walkAnim);
+        poseTarget.torsoY = 1.35 + breath * 0.015;
+        poseTarget.lShoulderZ = 0.05 + breath * 0.02;
+        poseTarget.rShoulderZ = -0.05 - breath * 0.02;
+        poseTarget.lElbowX = -0.15;
+        poseTarget.rElbowX = -0.15;
+    }
+
+    // Smoothly blend current rig transforms to target pose (Lerp)
+    const lerpRate = dt * 18.0;
+    for (let key in poseTarget) {
+        poseCurrent[key] += (poseTarget[key] - poseCurrent[key]) * Math.min(lerpRate, 1.0);
+    }
+
+    // Apply interpolated values directly to Three.js rig joints
+    torso.position.y = poseCurrent.torsoY;
+    torso.rotation.x = poseCurrent.torsoRotX;
+    torso.rotation.z = poseCurrent.torsoRotZ;
+
+    leftArm.shoulder.rotation.set(poseCurrent.lShoulderX, poseCurrent.lShoulderY, poseCurrent.lShoulderZ);
+    leftArm.elbow.rotation.x = poseCurrent.lElbowX;
+
+    rightArm.shoulder.rotation.set(poseCurrent.rShoulderX, poseCurrent.rShoulderY, poseCurrent.rShoulderZ);
+    rightArm.elbow.rotation.x = poseCurrent.rElbowX;
+
+    leftLeg.hipJoint.rotation.set(poseCurrent.lHipX, 0, poseCurrent.lHipZ);
+    leftLeg.knee.rotation.x = poseCurrent.lKneeX;
+
+    rightLeg.hipJoint.rotation.set(poseCurrent.rHipX, 0, poseCurrent.rHipZ);
+    rightLeg.knee.rotation.x = poseCurrent.rKneeX;
+}
+
+/* =========================================================
+   PHYSICS & MOVEMENT LOOP
+========================================================= */
 function updatePhysics(dt) {
     if (cutscene.active) {
         updateCutscene(dt);
@@ -1487,12 +1564,11 @@ function updatePhysics(dt) {
 
     if (state.attackCooldown > 0) state.attackCooldown -= dt;
 
-    // Camera Orientation
+    // Camera vectors
     const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
     const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch);
     const camRotation = new THREE.Quaternion().copy(qYaw).multiply(qPitch);
 
-    // Movement directions
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(qYaw);
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(qYaw);
 
@@ -1514,9 +1590,10 @@ function updatePhysics(dt) {
     if (moveDir.lengthSq() > 0) moveDir.normalize();
 
     const suit = SUITS[state.equippedSuit];
-    const moveSpeed = (state.isRunning || keys['ShiftLeft']) ? 18.0 * suit.speed : 10.5 * suit.speed;
+    const isSprinting = state.isRunning || keys['ShiftLeft'];
+    const targetSpeed = isSprinting ? 18.0 * suit.speed : 10.5 * suit.speed;
 
-    // Web Swinging physics forces
+    // Web Swinging Mechanics
     if (state.isSwinging) {
         const toAnchor = player.position.clone().sub(state.swingAnchor);
         const currentDist = toAnchor.length();
@@ -1524,107 +1601,112 @@ function updatePhysics(dt) {
         if (currentDist > state.swingLength) {
             toAnchor.normalize();
             const dot = velocity.dot(toAnchor);
-            if (dot > 0) {
-                velocity.sub(toAnchor.multiplyScalar(dot));
-            }
+            if (dot > 0) velocity.sub(toAnchor.multiplyScalar(dot));
             player.position.copy(state.swingAnchor).add(toAnchor.multiplyScalar(state.swingLength));
         }
 
-        // Pendulum acceleration force
         const swingForce = moveDir.clone().multiplyScalar(22.0 * dt);
         velocity.add(swingForce);
-        velocity.y -= 14.0 * dt; // Gravity in swing
+        velocity.y -= 14.0 * dt;
     } else {
-        // Standard locomotion
+        // Ground & Airborne Locomotion with Smooth Acceleration & Ground Friction
         if (isGrounded) {
-            velocity.x = THREE.MathUtils.lerp(velocity.x, moveDir.x * moveSpeed, dt * 10);
-            velocity.z = THREE.MathUtils.lerp(velocity.z, moveDir.z * moveSpeed, dt * 10);
+            const accel = moveDir.lengthSq() > 0 ? 16.0 : 22.0; // Responsive acceleration / rapid stopping
+            velocity.x = THREE.MathUtils.lerp(velocity.x, moveDir.x * targetSpeed, dt * accel);
+            velocity.z = THREE.MathUtils.lerp(velocity.z, moveDir.z * targetSpeed, dt * accel);
             velocity.y = -1.0;
         } else {
-            velocity.x += moveDir.x * moveSpeed * 0.15 * dt;
-            velocity.z += moveDir.z * moveSpeed * 0.15 * dt;
-            velocity.y -= 26.0 * dt; // Air gravity
+            velocity.x += moveDir.x * targetSpeed * 0.18 * dt;
+            velocity.z += moveDir.z * targetSpeed * 0.18 * dt;
+            velocity.y -= 26.0 * dt;
         }
     }
 
-    // Apply Velocity
+    // Apply Position
     player.position.addScaledVector(velocity, dt);
 
-    // Building Collisions & Ground check
+    // Collision Detection & Wall Snapping
     isGrounded = false;
-    if (player.position.y <= 1.0) {
-        player.position.y = 1.0;
+    if (player.position.y <= 0.0) {
+        player.position.y = 0.0;
         velocity.y = 0;
         isGrounded = true;
     }
 
     buildings.forEach(b => {
         const box = b.userData.box;
-        const playerRadius = 0.5;
+        const radius = 0.5;
 
-        // Expanded collision check for hero bounding box
         if (
-            player.position.x + playerRadius > box.min.x &&
-            player.position.x - playerRadius < box.max.x &&
-            player.position.z + playerRadius > box.min.z &&
-            player.position.z - playerRadius < box.max.z
+            player.position.x + radius > box.min.x &&
+            player.position.x - radius < box.max.x &&
+            player.position.z + radius > box.min.z &&
+            player.position.z - radius < box.max.z
         ) {
-            if (player.position.y < b.userData.height) {
-                // Horizontal pushout
+            if (player.position.y < b.userData.height - 0.2) {
+                // Smooth slide pushout against building facades
                 const dx1 = Math.abs(player.position.x - box.min.x);
                 const dx2 = Math.abs(player.position.x - box.max.x);
                 const dz1 = Math.abs(player.position.z - box.min.z);
                 const dz2 = Math.abs(player.position.z - box.max.z);
                 const min = Math.min(dx1, dx2, dz1, dz2);
 
-                if (min === dx1) player.position.x = box.min.x - playerRadius;
-                else if (min === dx2) player.position.x = box.max.x + playerRadius;
-                else if (min === dz1) player.position.z = box.min.z - playerRadius;
-                else if (min === dz2) player.position.z = box.max.z + playerRadius;
+                if (min === dx1) player.position.x = box.min.x - radius;
+                else if (min === dx2) player.position.x = box.max.x + radius;
+                else if (min === dz1) player.position.z = box.min.z - radius;
+                else if (min === dz2) player.position.z = box.max.z + radius;
 
-                // Wall climbing mechanics
+                // Wall run / climb mechanics on contact
                 if (keys['KeyW'] || joyVector.y < -0.3) {
-                    velocity.y = 8.0;
+                    velocity.y = 8.5;
                     isGrounded = true;
                 }
             } else if (player.position.y <= b.userData.height + 1.2) {
                 // Rooftop landing
-                player.position.y = b.userData.height + 1.0;
+                player.position.y = b.userData.height;
                 velocity.y = 0;
                 isGrounded = true;
             }
         }
     });
 
-    // Player Rotation facing direction
-    if (moveDir.lengthSq() > 0.01) {
-        const targetAngle = Math.atan2(moveDir.x, moveDir.z);
-        player.rotation.y = THREE.MathUtils.lerpAngle(player.rotation.y, targetAngle, dt * 12);
+    // Smooth Player Mesh Turning (Smooth Slerp/Angle Lerp)
+    const horizVelocity = new THREE.Vector3(velocity.x, 0, velocity.z);
+    const horizSpeed = horizVelocity.length();
+
+    if (horizSpeed > 0.4) {
+        const targetAngle = Math.atan2(horizVelocity.x, horizVelocity.z);
+        const turnSpeed = isGrounded ? 18.0 : 8.0;
+        player.rotation.y = THREE.MathUtils.lerpAngle(player.rotation.y, targetAngle, dt * turnSpeed);
     }
 
-    // Update Web Visual Mesh Position
+    // Web rope positioning
     if (state.isSwinging) {
         const handPos = player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
         updateWebRope(handPos, state.swingAnchor);
     }
 
-    // Third-person camera tracking
+    // Camera follow tracking
     const camOffset = new THREE.Vector3(0, 2.6, 6.5).applyQuaternion(camRotation);
     camera.position.copy(player.position).add(camOffset);
     camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 1.6, 0)));
 
-    // Crosshair target indicator update
+    // Target crosshairs
     const target = getSwingTarget();
     const crosshair = document.getElementById('crosshair');
     crosshair.classList.toggle('valid-target', target !== null);
 
     updateTargetRing();
-    updatePlayerAnimation(dt);
+
+    // Procedural animation update call
+    updateCharacterAnimations(dt, horizSpeed, isSprinting, isGrounded, state.isSwinging);
 }
 
 /* =========================================================
-   GAME LOOP TICK
+   GAME LOOP
 ========================================================= */
+let lastTime = performance.now();
+
 function animate(time) {
     requestAnimationFrame(animate);
     const dt = Math.min((time - lastTime) / 1000, 0.08);
@@ -1640,11 +1722,9 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-/* Initialize */
 updateQuestHUD();
 requestAnimationFrame(animate);
 
-// Trigger initial story cutscene on boot
 setTimeout(() => {
     if (!state.introCutsceneDone) {
         state.introCutsceneDone = true;
