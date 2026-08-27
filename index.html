@@ -1,512 +1,732 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Web-Slinger 3D: Smooth Locomotion & Expressive Rigging</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
-        html, body { width: 100%; height: 100%; overscroll-behavior: none; }
-        body { overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #canvas-container { width: 100vw; height: 100vh; display: block; touch-action: none; }
-        canvas { touch-action: none; display: block; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Web-Slinger 3D — Ultimate City</title>
 
-        #hud {
-            position: absolute;
-            top: max(18px, env(safe-area-inset-top));
-            left: max(18px, env(safe-area-inset-left));
-            color: #fff;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .hud-card {
-            background: rgba(15, 23, 42, 0.88);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            padding: 10px 16px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            min-width: 180px;
-            font-size: 14px;
-        }
-        .hud-val { font-size: 16px; font-weight: 800; color: #fbbf24; }
-        .hud-hp { color: #ef4444; }
-        .hud-suit { color: #38bdf8; }
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:none;
+}
 
-        #quest-card {
-            position: absolute;
-            top: max(18px, env(safe-area-inset-top));
-            right: max(18px, env(safe-area-inset-right));
-            color: #fff;
-            pointer-events: none;
-            z-index: 10;
-        }
-        .quest-box {
-            background: rgba(15, 23, 42, 0.92);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            padding: 10px 16px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            min-width: 220px;
-            font-size: 13px;
-        }
-        .quest-title { font-weight: 800; color: #38bdf8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .quest-desc { color: #e2e8f0; font-size: 12px; }
+html,body{
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+    font-family:Segoe UI,Tahoma,Verdana,sans-serif;
+}
 
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 24px;
-            height: 24px;
-            border: 2px dashed rgba(255, 255, 255, 0.7);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            transition: all 0.12s ease;
-            z-index: 10;
-        }
-        #crosshair.valid-target {
-            border: 2px solid #38bdf8;
-            background: rgba(56, 189, 248, 0.35);
-            box-shadow: 0 0 16px #38bdf8;
-            transform: translate(-50%, -50%) scale(1.35);
-        }
+#canvas-container{
+    width:100vw;
+    height:100vh;
+}
 
-        #target-ring {
-            position: absolute;
-            width: 32px;
-            height: 32px;
-            border: 2px solid #38bdf8;
-            border-radius: 50%;
-            pointer-events: none;
-            display: none;
-            transform: translate(-50%, -50%);
-            z-index: 9;
-            box-shadow: 0 0 14px #38bdf8;
-        }
+canvas{
+    display:block;
+}
 
-        #combat-indicator {
-            position: absolute;
-            top: 60%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(239, 68, 68, 0.95);
-            border: 2px solid #fff;
-            color: #fff;
-            font-weight: 900;
-            font-size: 13px;
-            padding: 8px 18px;
-            border-radius: 20px;
-            pointer-events: none;
-            display: none;
-            z-index: 10;
-            box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
-            animation: bounce 0.35s infinite alternate;
-            text-align: center;
-            white-space: nowrap;
-        }
-        @keyframes bounce {
-            from { transform: translate(-50%, -50%) scale(1); }
-            to { transform: translate(-50%, -50%) scale(1.1); }
-        }
+.hud{
+    position:absolute;
+    top:max(18px,env(safe-area-inset-top));
+    left:max(18px,env(safe-area-inset-left));
+    z-index:10;
+    color:#fff;
+    pointer-events:none;
+}
 
-        #crime-alert {
-            position: absolute;
-            top: max(20px, env(safe-area-inset-top));
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(220, 38, 38, 0.92);
-            border: 2px solid #fca5a5;
-            padding: 8px 22px;
-            border-radius: 24px;
-            color: white;
-            font-weight: bold;
-            font-size: 13px;
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
-            display: none;
-            pointer-events: none;
-            z-index: 10;
-            white-space: nowrap;
-        }
+.hud-card{
+    background:rgba(15,23,42,.88);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.18);
+    padding:10px 16px;
+    border-radius:12px;
+    min-width:190px;
+    font-size:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);
+}
 
-        #controls-card {
-            position: absolute;
-            bottom: max(18px, env(safe-area-inset-bottom));
-            left: 18px;
-            background: rgba(15, 23, 42, 0.88);
-            color: #cbd5e1;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 12px;
-            line-height: 1.6;
-            border: 1px solid rgba(255,255,255,0.12);
-            pointer-events: none;
-            z-index: 10;
-            max-width: 280px;
-        }
-        #controls-card b { color: #38bdf8; }
+.hud-val{
+    font-size:16px;
+    font-weight:800;
+    color:#fbbf24;
+}
 
-        body.touch-device #controls-card { display: none; }
+.hud-hp{color:#ef4444}
+.hud-suit{color:#38bdf8}
+.hud-combo{color:#f472b6}
 
-        #shop-modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(15, 23, 42, 0.98);
-            border: 2px solid #3b82f6;
-            border-radius: 16px;
-            padding: 24px;
-            width: 420px;
-            max-width: 92vw;
-            max-height: 86vh;
-            overflow-y: auto;
-            color: #fff;
-            display: none;
-            box-shadow: 0 0 35px rgba(59, 130, 246, 0.6);
-            z-index: 100;
-            touch-action: pan-y;
-        }
-        #shop-modal h2 { margin-bottom: 14px; text-align: center; color: #60a5fa; }
-        .suit-item {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 12px 14px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-        }
-        .suit-btn {
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-            flex-shrink: 0;
-        }
-        .suit-btn:hover { background: #1d4ed8; }
-        .suit-btn.equipped { background: #10b981; cursor: default; }
-        #shop-close-btn {
-            display: block;
-            margin: 14px auto 0;
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.25);
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 13px;
-            cursor: pointer;
-        }
+#quest-panel{
+    position:absolute;
+    top:150px;
+    left:18px;
+    width:275px;
+    background:rgba(15,23,42,.92);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(250,204,21,.45);
+    border-radius:14px;
+    padding:13px;
+    color:#fff;
+    z-index:14;
+    pointer-events:none;
+    box-shadow:0 8px 25px rgba(0,0,0,.45);
+}
 
-        #action-msg {
-            position: absolute;
-            bottom: 96px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
-            color: #38bdf8;
-            font-size: 15px;
-            font-weight: bold;
-            padding: 8px 24px;
-            border-radius: 20px;
-            pointer-events: none;
-            display: none;
-            z-index: 10;
-            white-space: nowrap;
-        }
+#quest-title{
+    color:#facc15;
+    font-size:14px;
+    font-weight:900;
+    margin-bottom:6px;
+}
 
-        /* Mobile Touch Controls */
-        #touch-layer {
-            position: absolute;
-            inset: 0;
-            z-index: 20;
-            display: none;
-        }
-        body.touch-device #touch-layer { display: block; }
-        body.cutscene-active #touch-layer,
-        body.cutscene-active #touch-buttons,
-        body.cutscene-active #btn-shop,
-        body.cutscene-active #btn-chat-toggle { display: none !important; }
+#quest-description{
+    color:#cbd5e1;
+    font-size:12px;
+    line-height:1.45;
+}
 
-        #look-zone {
-            position: absolute;
-            top: 0; right: 0;
-            width: 60%;
-            height: 100%;
-            pointer-events: auto;
-        }
-        #move-zone {
-            position: absolute;
-            top: 0; left: 0;
-            width: 40%;
-            height: 100%;
-            pointer-events: auto;
-        }
+#quest-progress{
+    height:7px;
+    background:rgba(255,255,255,.1);
+    border-radius:10px;
+    overflow:hidden;
+    margin-top:9px;
+}
 
-        #joystick-base {
-            position: absolute;
-            width: 110px;
-            height: 110px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.12);
-            border: 2px solid rgba(255,255,255,0.35);
-            display: none;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            z-index: 21;
-        }
-        #joystick-stick {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: rgba(56, 189, 248, 0.55);
-            border: 2px solid rgba(255,255,255,0.6);
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-        }
+#quest-progress-fill{
+    height:100%;
+    width:0%;
+    background:#facc15;
+    transition:width:.3s ease;
+}
 
-        #touch-buttons {
-            position: absolute;
-            bottom: max(24px, env(safe-area-inset-bottom));
-            right: max(18px, env(safe-area-inset-right));
-            z-index: 22;
-            display: flex;
-            flex-direction: column-reverse;
-            align-items: flex-end;
-            gap: 12px;
-            pointer-events: auto;
-        }
-        .tbtn {
-            width: 76px;
-            height: 76px;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.4);
-            color: #fff;
-            font-weight: 800;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            line-height: 1.15;
-            -webkit-tap-highlight-color: transparent;
-        }
-        #btn-attack { background: rgba(239,68,68,0.55); width: 92px; height: 92px; font-size: 14px; }
-        #btn-swing { background: rgba(56,189,248,0.5); }
-        #btn-jump { background: rgba(250,204,21,0.5); color: #111; }
-        #btn-run { background: rgba(52,211,153,0.4); }
-        #btn-run.active { background: rgba(52,211,153,0.9); color: #062; }
-        #btn-shop {
-            position: absolute;
-            top: max(18px, env(safe-area-inset-top));
-            right: max(18px, env(safe-area-inset-right));
-            width: 52px; height: 52px;
-            border-radius: 50%;
-            background: rgba(59,130,246,0.55);
-            border: 2px solid rgba(255,255,255,0.4);
-            color: #fff;
-            font-size: 20px;
-            display: flex; align-items: center; justify-content: center;
-            z-index: 22;
-            pointer-events: auto;
-        }
-        #btn-chat-toggle {
-            position: absolute;
-            top: max(18px, env(safe-area-inset-top));
-            right: calc(max(18px, env(safe-area-inset-right)) + 66px);
-            width: 52px; height: 52px;
-            border-radius: 50%;
-            background: rgba(16,185,129,0.55);
-            border: 2px solid rgba(255,255,255,0.4);
-            color: #fff;
-            font-size: 20px;
-            display: flex; align-items: center; justify-content: center;
-            z-index: 22;
-            pointer-events: auto;
-        }
+#quest-reward{
+    margin-top:6px;
+    font-size:11px;
+    color:#fbbf24;
+}
 
-        /* Chatbox */
-        #chat-panel {
-            position: absolute;
-            top: calc(max(18px, env(safe-area-inset-top)) + 62px);
-            right: max(18px, env(safe-area-inset-right));
-            width: 280px;
-            max-height: 42vh;
-            background: rgba(15, 23, 42, 0.94);
-            border: 1px solid rgba(16,185,129,0.5);
-            border-radius: 14px;
-            z-index: 60;
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-        }
-        #chat-header {
-            background: rgba(16,185,129,0.18);
-            color: #6ee7b7;
-            font-weight: 800;
-            font-size: 13px;
-            padding: 10px 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            pointer-events: auto;
-        }
-        #chat-close { cursor: pointer; color: #94a3b8; font-weight: 700; }
-        #chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px 12px;
-            font-size: 12.5px;
-            color: #e2e8f0;
-            line-height: 1.5;
-            touch-action: pan-y;
-            pointer-events: auto;
-            max-height: 26vh;
-        }
-        .chat-msg { margin-bottom: 8px; }
-        .chat-msg b { color: #38bdf8; }
-        .chat-msg-you b { color: #fbbf24; }
-        #chat-input-row {
-            display: flex;
-            gap: 6px;
-            padding: 8px;
-            border-top: 1px solid rgba(255,255,255,0.08);
-            pointer-events: auto;
-        }
-        #chat-input {
-            flex: 1;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 8px;
-            color: #fff;
-            padding: 8px 10px;
-            font-size: 12.5px;
-            outline: none;
-        }
-        #chat-send {
-            background: #10b981;
-            border: none;
-            color: #052e21;
-            font-weight: 800;
-            border-radius: 8px;
-            padding: 0 14px;
-            cursor: pointer;
-            font-size: 12.5px;
-        }
+#enemy-tracker{
+    position:absolute;
+    top:150px;
+    right:18px;
+    width:240px;
+    max-height:42vh;
+    overflow-y:auto;
+    background:rgba(15,23,42,.92);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(239,68,68,.5);
+    border-radius:14px;
+    padding:12px;
+    color:#fff;
+    z-index:15;
+    pointer-events:none;
+    box-shadow:0 8px 25px rgba(0,0,0,.45);
+}
 
-        /* Cutscene overlay */
-        #letterbox-top, #letterbox-bottom {
-            position: absolute;
-            left: 0; width: 100%; height: 0;
-            background: #000;
-            z-index: 50;
-            transition: height 0.6s ease;
-            pointer-events: none;
-        }
-        #letterbox-top { top: 0; }
-        #letterbox-bottom { bottom: 0; }
-        #cutscene-subtitle {
-            position: absolute;
-            bottom: 14%;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #fff;
-            font-size: 19px;
-            font-weight: 600;
-            text-shadow: 0 2px 10px #000, 0 0 3px #000;
-            z-index: 51;
-            text-align: center;
-            max-width: 78%;
-            display: none;
-            pointer-events: none;
-            letter-spacing: 0.3px;
-        }
-        #cutscene-skip {
-            position: absolute;
-            bottom: 5%;
-            right: 6%;
-            z-index: 61;
-            background: rgba(255,255,255,0.14);
-            border: 1px solid rgba(255,255,255,0.4);
-            color: #fff;
-            padding: 9px 18px;
-            border-radius: 22px;
-            display: none;
-            cursor: pointer;
-            font-size: 12.5px;
-            pointer-events: auto;
-        }
+#enemy-tracker h3{
+    color:#f87171;
+    font-size:14px;
+    margin-bottom:8px;
+}
 
-        @media (max-width: 520px) {
-            .hud-card { min-width: 150px; font-size: 12px; padding: 8px 12px; }
-            .hud-val { font-size: 13px; }
-            #chat-panel { width: 78vw; }
-            #quest-card { display: none; }
-        }
-    </style>
+.enemy-track{
+    padding:7px;
+    margin-bottom:6px;
+    background:rgba(255,255,255,.06);
+    border-radius:8px;
+    font-size:11px;
+}
+
+.enemy-track-name{
+    display:flex;
+    justify-content:space-between;
+    font-weight:800;
+}
+
+.enemy-distance{
+    color:#38bdf8;
+}
+
+.enemy-hp-bar{
+    height:5px;
+    margin-top:5px;
+    background:rgba(255,255,255,.12);
+    border-radius:5px;
+    overflow:hidden;
+}
+
+.enemy-hp-fill{
+    height:100%;
+    background:#ef4444;
+    transition:width:.15s ease;
+}
+
+#crosshair{
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:24px;
+    height:24px;
+    border:2px dashed rgba(255,255,255,.7);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    z-index:10;
+    transition:.12s ease;
+}
+
+#crosshair.valid-target{
+    border:2px solid #38bdf8;
+    background:rgba(56,189,248,.35);
+    box-shadow:0 0 16px #38bdf8;
+    transform:translate(-50%,-50%) scale(1.35);
+}
+
+#target-ring{
+    position:absolute;
+    width:32px;
+    height:32px;
+    border:2px solid #38bdf8;
+    border-radius:50%;
+    pointer-events:none;
+    display:none;
+    transform:translate(-50%,-50%);
+    z-index:9;
+    box-shadow:0 0 14px #38bdf8;
+}
+
+#combat-indicator{
+    position:absolute;
+    top:60%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(239,68,68,.95);
+    border:2px solid #fff;
+    color:#fff;
+    font-weight:900;
+    font-size:13px;
+    padding:8px 18px;
+    border-radius:20px;
+    pointer-events:none;
+    display:none;
+    z-index:10;
+    animation:bounce .35s infinite alternate;
+}
+
+@keyframes bounce{
+    from{transform:translate(-50%,-50%) scale(1)}
+    to{transform:translate(-50%,-50%) scale(1.1)}
+}
+
+#crime-alert{
+    position:absolute;
+    top:max(20px,env(safe-area-inset-top));
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(220,38,38,.94);
+    border:2px solid #fca5a5;
+    padding:8px 22px;
+    border-radius:24px;
+    color:white;
+    font-weight:bold;
+    font-size:13px;
+    display:none;
+    pointer-events:none;
+    z-index:10;
+    box-shadow:0 0 20px rgba(239,68,68,.7);
+}
+
+#action-msg{
+    position:absolute;
+    bottom:96px;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,.85);
+    color:#38bdf8;
+    font-size:15px;
+    font-weight:bold;
+    padding:8px 24px;
+    border-radius:20px;
+    pointer-events:none;
+    display:none;
+    z-index:10;
+}
+
+#quest-popup{
+    position:absolute;
+    top:40%;
+    left:50%;
+    transform:translate(-50%,-50%) scale(.7);
+    opacity:0;
+    background:rgba(15,23,42,.97);
+    border:2px solid #facc15;
+    color:#fff;
+    padding:22px 35px;
+    border-radius:16px;
+    text-align:center;
+    z-index:70;
+    pointer-events:none;
+    transition:.35s ease;
+    box-shadow:0 0 35px rgba(250,204,21,.5);
+}
+
+#quest-popup.show{
+    transform:translate(-50%,-50%) scale(1);
+    opacity:1;
+}
+
+#quest-popup h2{
+    color:#facc15;
+    margin-bottom:7px;
+}
+
+#controls-card{
+    position:absolute;
+    bottom:max(18px,env(safe-area-inset-bottom));
+    left:18px;
+    background:rgba(15,23,42,.88);
+    color:#cbd5e1;
+    padding:12px 16px;
+    border-radius:12px;
+    font-size:12px;
+    line-height:1.6;
+    border:1px solid rgba(255,255,255,.12);
+    pointer-events:none;
+    z-index:10;
+    max-width:300px;
+}
+
+#controls-card b{
+    color:#38bdf8;
+}
+
+#shop-modal{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(15,23,42,.98);
+    border:2px solid #3b82f6;
+    border-radius:16px;
+    padding:24px;
+    width:420px;
+    max-width:92vw;
+    max-height:86vh;
+    overflow-y:auto;
+    color:#fff;
+    display:none;
+    box-shadow:0 0 35px rgba(59,130,246,.6);
+    z-index:100;
+    touch-action:pan-y;
+}
+
+#shop-modal h2{
+    margin-bottom:14px;
+    text-align:center;
+    color:#60a5fa;
+}
+
+.suit-item{
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.1);
+    padding:12px 14px;
+    border-radius:10px;
+    margin-bottom:10px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+}
+
+.suit-btn{
+    background:#2563eb;
+    color:#fff;
+    border:0;
+    padding:10px 14px;
+    border-radius:6px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.suit-btn.equipped{
+    background:#10b981;
+}
+
+#shop-close-btn{
+    display:block;
+    margin:14px auto 0;
+    background:rgba(255,255,255,.1);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.25);
+    padding:8px 20px;
+    border-radius:20px;
+}
+
+#chat-panel{
+    position:absolute;
+    top:85px;
+    right:18px;
+    width:280px;
+    max-height:42vh;
+    background:rgba(15,23,42,.95);
+    border:1px solid rgba(16,185,129,.5);
+    border-radius:14px;
+    z-index:60;
+    display:none;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+#chat-header{
+    background:rgba(16,185,129,.18);
+    color:#6ee7b7;
+    font-weight:800;
+    padding:10px 12px;
+    display:flex;
+    justify-content:space-between;
+    pointer-events:auto;
+}
+
+#chat-messages{
+    flex:1;
+    overflow-y:auto;
+    padding:10px 12px;
+    font-size:12.5px;
+    color:#e2e8f0;
+    line-height:1.5;
+    max-height:26vh;
+    pointer-events:auto;
+}
+
+.chat-msg{
+    margin-bottom:8px;
+}
+
+.chat-msg b{
+    color:#38bdf8;
+}
+
+.chat-msg-you b{
+    color:#fbbf24;
+}
+
+#chat-input-row{
+    display:flex;
+    gap:6px;
+    padding:8px;
+    border-top:1px solid rgba(255,255,255,.08);
+    pointer-events:auto;
+}
+
+#chat-input{
+    flex:1;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:8px;
+    color:#fff;
+    padding:8px 10px;
+    outline:none;
+}
+
+#chat-send{
+    background:#10b981;
+    border:0;
+    color:#052e21;
+    font-weight:800;
+    border-radius:8px;
+    padding:0 14px;
+}
+
+#letterbox-top,
+#letterbox-bottom{
+    position:absolute;
+    left:0;
+    width:100%;
+    height:0;
+    background:#000;
+    z-index:50;
+    transition:height .6s ease;
+    pointer-events:none;
+}
+
+#letterbox-top{top:0}
+#letterbox-bottom{bottom:0}
+
+#cutscene-subtitle{
+    position:absolute;
+    bottom:14%;
+    left:50%;
+    transform:translateX(-50%);
+    color:#fff;
+    font-size:19px;
+    font-weight:600;
+    text-shadow:0 2px 10px #000;
+    z-index:51;
+    text-align:center;
+    max-width:78%;
+    display:none;
+    pointer-events:none;
+}
+
+#cutscene-skip{
+    position:absolute;
+    bottom:5%;
+    right:6%;
+    z-index:61;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.4);
+    color:#fff;
+    padding:9px 18px;
+    border-radius:22px;
+    display:none;
+    cursor:pointer;
+}
+
+#touch-layer{
+    position:absolute;
+    inset:0;
+    z-index:20;
+    display:none;
+}
+
+#move-zone{
+    position:absolute;
+    top:0;
+    left:0;
+    width:40%;
+    height:100%;
+}
+
+#look-zone{
+    position:absolute;
+    top:0;
+    right:0;
+    width:60%;
+    height:100%;
+}
+
+#joystick-base{
+    position:absolute;
+    width:110px;
+    height:110px;
+    border-radius:50%;
+    background:rgba(255,255,255,.12);
+    border:2px solid rgba(255,255,255,.35);
+    display:none;
+    pointer-events:none;
+    transform:translate(-50%,-50%);
+    z-index:21;
+}
+
+#joystick-stick{
+    position:absolute;
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    background:rgba(56,189,248,.55);
+    border:2px solid rgba(255,255,255,.6);
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+}
+
+#touch-buttons{
+    position:absolute;
+    bottom:max(24px,env(safe-area-inset-bottom));
+    right:18px;
+    z-index:22;
+    display:flex;
+    flex-direction:column-reverse;
+    align-items:flex-end;
+    gap:12px;
+}
+
+.tbtn{
+    width:76px;
+    height:76px;
+    border-radius:50%;
+    border:2px solid rgba(255,255,255,.4);
+    color:#fff;
+    font-weight:800;
+    font-size:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+}
+
+#btn-attack{
+    background:rgba(239,68,68,.55);
+    width:92px;
+    height:92px;
+}
+
+#btn-swing{background:rgba(56,189,248,.5)}
+#btn-jump{background:rgba(250,204,21,.5);color:#111}
+#btn-run{background:rgba(52,211,153,.4)}
+#btn-run.active{background:rgba(52,211,153,.9);color:#062}
+
+#btn-shop,
+#btn-chat-toggle{
+    position:absolute;
+    top:max(18px,env(safe-area-inset-top));
+    width:52px;
+    height:52px;
+    border-radius:50%;
+    color:#fff;
+    font-size:20px;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:22;
+    border:2px solid rgba(255,255,255,.4);
+}
+
+#btn-shop{
+    right:18px;
+    background:rgba(59,130,246,.55);
+}
+
+#btn-chat-toggle{
+    right:84px;
+    background:rgba(16,185,129,.55);
+}
+
+body.touch-device #touch-layer,
+body.touch-device #touch-buttons,
+body.touch-device #btn-shop,
+body.touch-device #btn-chat-toggle{
+    display:block;
+}
+
+body.cutscene-active #touch-layer,
+body.cutscene-active #touch-buttons,
+body.cutscene-active #btn-shop,
+body.cutscene-active #btn-chat-toggle{
+    display:none!important;
+}
+
+@media(max-width:600px){
+    #controls-card{display:none}
+
+    #quest-panel{
+        top:120px;
+        left:10px;
+        width:205px;
+        padding:9px;
+    }
+
+    #enemy-tracker{
+        top:120px;
+        right:10px;
+        width:185px;
+        max-height:27vh;
+        padding:8px;
+    }
+
+    #quest-title,
+    #enemy-tracker h3{
+        font-size:11px;
+    }
+
+    #quest-description,
+    .enemy-track{
+        font-size:10px;
+    }
+
+    .hud-card{
+        min-width:150px;
+        font-size:12px;
+        padding:8px 12px;
+    }
+
+    .hud-val{
+        font-size:13px;
+    }
+}
+</style>
 </head>
+
 <body>
 
 <div id="canvas-container"></div>
+
 <div id="crosshair"></div>
 <div id="target-ring"></div>
-<div id="combat-indicator">⚡ TAP ATTACK TO STRIKE!</div>
 
-<div id="hud">
+<div id="hud" class="hud">
     <div class="hud-card">
         <div>Health: <span id="val-hp" class="hud-val hud-hp">100 / 100</span></div>
         <div>Coins: <span id="val-coins" class="hud-val">100</span> 🪙</div>
         <div>Suit: <span id="val-suit" class="hud-val hud-suit">Advanced Hero</span></div>
+        <div id="combo-row" style="display:none">
+            Combo: <span id="val-combo" class="hud-val hud-combo">x1</span>
+        </div>
     </div>
 </div>
 
-<div id="quest-card">
-    <div class="quest-box">
-        <div id="quest-title" class="quest-title">ACTIVE QUEST</div>
-        <div id="quest-desc" class="quest-desc">Patrol the city and stop active crimes.</div>
+<div id="quest-panel">
+    <div id="quest-title">📜 QUEST: Loading...</div>
+    <div id="quest-description">Preparing mission...</div>
+    <div id="quest-progress">
+        <div id="quest-progress-fill"></div>
     </div>
+    <div id="quest-reward">Reward: 0 🪙</div>
 </div>
 
-<div id="crime-alert">🚨 BANDITS SPOTTED: Take them down! [<span id="thug-count">3</span> left]</div>
+<div id="enemy-tracker">
+    <h3>🎯 ENEMY TRACKER</h3>
+    <div id="enemy-tracker-list">No enemies detected.</div>
+</div>
+
+<div id="crime-alert">
+    🚨 BANDITS SPOTTED:
+    <span id="thug-count">3</span> left
+</div>
+
+<div id="combat-indicator">⚡ TAP ATTACK TO STRIKE!</div>
 <div id="action-msg"></div>
+
+<div id="quest-popup">
+    <h2>⭐ QUEST COMPLETE!</h2>
+    <div id="quest-popup-text">Mission complete!</div>
+</div>
 
 <div id="controls-card">
     <b>Controls:</b><br>
-    • <b>W, A, S, D</b> : Smooth Directional Movement<br>
-    • <b>Shift</b> : Hold to Sprint<br>
-    • <b>SPACE</b> : Jump / Release Swing<br>
-    • <b>Hold E or Right-Click</b> : Web-Swing<br>
-    • <b>F or Left-Click</b> : Multi-Combo Punch/Kick<br>
-    • <b>U</b> : Suit Upgrades Shop<br>
-    • <b>Click Screen</b> : Lock Mouse / Free Look
+    • <b>W A S D</b> — Move<br>
+    • <b>SHIFT</b> — Run<br>
+    • <b>SPACE</b> — Jump / Swing Boost<br>
+    • <b>E / Right Click</b> — Web Swing<br>
+    • <b>F / Left Click</b> — Attack<br>
+    • <b>U</b> — Suit Shop<br>
+    • <b>Mouse</b> — Look
 </div>
 
 <div id="shop-modal">
-    <h2>Suit Fabrication Hub</h2>
+    <h2>🕷️ Suit Fabrication Hub</h2>
     <div id="suits-list"></div>
     <button id="shop-close-btn" onclick="toggleShop()">Close</button>
 </div>
 
-<!-- Touch controls -->
 <div id="touch-layer">
     <div id="move-zone"></div>
     <div id="look-zone"></div>
-    <div id="joystick-base"><div id="joystick-stick"></div></div>
+    <div id="joystick-base">
+        <div id="joystick-stick"></div>
+    </div>
 </div>
+
 <button id="btn-shop">🛠️</button>
 <button id="btn-chat-toggle">💬</button>
+
 <div id="touch-buttons">
     <div class="tbtn" id="btn-attack">HIT</div>
     <div class="tbtn" id="btn-swing">SWING</div>
@@ -514,17 +734,20 @@
     <div class="tbtn" id="btn-run">RUN</div>
 </div>
 
-<!-- Chatbox -->
 <div id="chat-panel">
-    <div id="chat-header">📻 Dispatch Radio <span id="chat-close">✕</span></div>
+    <div id="chat-header">
+        📻 Dispatch Radio
+        <span id="chat-close">✕</span>
+    </div>
+
     <div id="chat-messages"></div>
+
     <div id="chat-input-row">
-        <input id="chat-input" type="text" maxlength="90" placeholder="Message Dispatch..." />
+        <input id="chat-input" maxlength="90" placeholder="Message Dispatch...">
         <button id="chat-send">Send</button>
     </div>
 </div>
 
-<!-- Cutscene overlay -->
 <div id="letterbox-top"></div>
 <div id="letterbox-bottom"></div>
 <div id="cutscene-subtitle"></div>
@@ -533,1204 +756,3634 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
-/* =========================================================
-   DEVICE DETECTION
-========================================================= */
-const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-if (isTouchDevice) document.body.classList.add('touch-device');
 
 /* =========================================================
-   GAME STATE
+DEVICE
 ========================================================= */
-const state = {
-    coins: 100,
-    hp: 100,
-    maxHp: 100,
-    equippedSuit: 'classic',
-    isSwinging: false,
-    swingAnchor: new THREE.Vector3(),
-    swingLength: 0,
-    isRunning: false,
-    shopOpen: false,
-    attackAnimTimer: 0,
-    attackPoseIndex: 0,
-    walkAnim: 0,
-    attackCooldown: 0,
-    activeQuestIndex: 0,
-    questProgress: 0,
-    crimesSolved: 0,
-    introCutsceneDone: false
+
+const isTouchDevice =
+    ('ontouchstart' in window) ||
+    navigator.maxTouchPoints > 0;
+
+if(isTouchDevice)
+    document.body.classList.add('touch-device');
+
+
+/* =========================================================
+GAME STATE
+========================================================= */
+
+const state={
+    coins:100,
+    hp:100,
+    maxHp:100,
+
+    equippedSuit:'classic',
+
+    isSwinging:false,
+    swingAnchor:new THREE.Vector3(),
+    swingLength:0,
+
+    isClimbing:false,
+    isRunning:false,
+    shopOpen:false,
+
+    attackAnimTimer:0,
+    attackPoseIndex:0,
+
+    walkAnim:0,
+    comboStep:0,
+    comboWindow:0,
+    attackCooldown:0,
+
+    lastPosition:new THREE.Vector3()
 };
 
-const SUITS = {
-    classic:  { name: 'Advanced Hero',   cost: 0,   owned: true,  primary: 0xcc1111, web: 0x1a1a1a, blue: 0x1d4ed8, speed: 1.0,  damage: 30 },
-    symbiote: { name: 'Shadow Symbiote', cost: 150, owned: false, primary: 0x0f0f14, web: 0x2a2a35, blue: 0x374151, speed: 1.25, damage: 45 },
-    iron:     { name: 'Iron Arachnid',   cost: 300, owned: false, primary: 0x8a1414, web: 0x2a2a2a, blue: 0xf59e0b, speed: 1.4,  damage: 65 },
-    cyber:    { name: 'Cyber 2099',      cost: 500, owned: false, primary: 0x1e3a8a, web: 0x0b1330, blue: 0xef4444, speed: 1.6,  damage: 90 }
-};
 
 /* =========================================================
-   QUEST SYSTEM
+SUITS
 ========================================================= */
-const QUESTS = [
-    { title: "Rooftop Patrol", desc: "Clear 1 active crime in the city district.", target: 1, reward: 100 },
-    { title: "Swing Specialist", desc: "Perform web swings and stop 2 street crimes.", target: 2, reward: 200 },
-    { title: "City Protector", desc: "Defeat 3 villain squads roaming rooftops.", target: 3, reward: 350 },
-    { title: "Master Hero", desc: "Keep the district clean! Resolve 5 active crimes.", target: 5, reward: 500 }
+
+const SUITS={
+
+    classic:{
+        name:'Advanced Hero',
+        cost:0,
+        owned:true,
+        primary:0xcc1111,
+        web:0x1a1a1a,
+        blue:0x1d4ed8,
+        speed:1,
+        damage:30
+    },
+
+    symbiote:{
+        name:'Shadow Symbiote',
+        cost:150,
+        owned:false,
+        primary:0x0f0f14,
+        web:0x2a2a35,
+        blue:0x374151,
+        speed:1.25,
+        damage:45
+    },
+
+    iron:{
+        name:'Iron Arachnid',
+        cost:300,
+        owned:false,
+        primary:0x8a1414,
+        web:0x2a2a2a,
+        blue:0xf59e0b,
+        speed:1.4,
+        damage:65
+    },
+
+    cyber:{
+        name:'Cyber 2099',
+        cost:500,
+        owned:false,
+        primary:0x1e3a8a,
+        web:0x0b1330,
+        blue:0xef4444,
+        speed:1.6,
+        damage:90
+    }
+};
+
+
+/* =========================================================
+QUEST SYSTEM
+========================================================= */
+
+const quests=[
+
+    {
+        title:'First Response',
+        description:'Defeat 3 bandits threatening the city.',
+        type:'kill',
+        target:3,
+        reward:200
+    },
+
+    {
+        title:'Street Sweeper',
+        description:'Defeat 6 enemies.',
+        type:'kill',
+        target:6,
+        reward:300
+    },
+
+    {
+        title:'Web-Slinger',
+        description:'Swing through the city for 15 seconds.',
+        type:'swing',
+        target:15,
+        reward:250
+    },
+
+    {
+        title:'Rooftop Runner',
+        description:'Travel 1000 meters across the city.',
+        type:'distance',
+        target:1000,
+        reward:350
+    },
+
+    {
+        title:'City Defender',
+        description:'Defeat 10 bandits.',
+        type:'kill',
+        target:10,
+        reward:500
+    }
 ];
 
-function updateQuestHUD() {
-    const q = QUESTS[Math.min(state.activeQuestIndex, QUESTS.length - 1)];
-    document.getElementById('quest-title').innerText = q.title;
-    document.getElementById('quest-desc').innerText = `${q.desc} (${state.questProgress}/${q.target})`;
-}
-
-function notifyCrimeSolved() {
-    state.crimesSolved++;
-    state.questProgress++;
-    const q = QUESTS[Math.min(state.activeQuestIndex, QUESTS.length - 1)];
-    if (state.questProgress >= q.target) {
-        state.coins += q.reward;
-        showActionMsg(`QUEST COMPLETE! +${q.reward} 🪙`);
-        triggerQuestCompleteCutscene(q.title);
-        state.activeQuestIndex = (state.activeQuestIndex + 1) % QUESTS.length;
-        state.questProgress = 0;
-    }
-    updateQuestHUD();
-    document.getElementById('val-coins').innerText = state.coins;
-}
-
-/* =========================================================
-   CUTSCENE ENGINE
-========================================================= */
-const cutscene = {
-    active: false,
-    segments: [],
-    segIndex: 0,
-    segTime: 0,
-    onDone: null
+const questState={
+    index:0,
+    progress:0,
+    completed:false,
+    swingTime:0,
+    distance:0
 };
 
-function playCutscene(segments, onDone) {
-    if (!segments || segments.length === 0) { if (onDone) onDone(); return; }
-    cutscene.active = true;
-    cutscene.segments = segments;
-    cutscene.segIndex = 0;
-    cutscene.segTime = 0;
-    cutscene.onDone = onDone || null;
+function currentQuest(){
+    return quests[
+        Math.min(
+            questState.index,
+            quests.length-1
+        )
+    ];
+}
+
+function updateQuestUI(){
+
+    const q=currentQuest();
+
+    document.getElementById('quest-title').innerText=
+        `📜 QUEST: ${q.title}`;
+
+    document.getElementById('quest-description').innerText=
+        q.description;
+
+    const percent=
+        Math.min(
+            100,
+            questState.progress/q.target*100
+        );
+
+    document.getElementById(
+        'quest-progress-fill'
+    ).style.width=percent+'%';
+
+    document.getElementById(
+        'quest-reward'
+    ).innerText=`Reward: ${q.reward} 🪙`;
+
+    if(
+        questState.progress>=q.target &&
+        !questState.completed
+    ){
+        completeQuest();
+    }
+}
+
+function questEnemyDefeated(){
+
+    const q=currentQuest();
+
+    if(q.type!=='kill') return;
+
+    questState.progress++;
+
+    updateQuestUI();
+}
+
+
+/* =========================================================
+CUTSCENE ENGINE
+========================================================= */
+
+const cutscene={
+    active:false,
+    segments:[],
+    segIndex:0,
+    segTime:0,
+    onDone:null
+};
+
+function playCutscene(segments,onDone){
+
+    if(!segments || !segments.length){
+        if(onDone) onDone();
+        return;
+    }
+
+    cutscene.active=true;
+    cutscene.segments=segments;
+    cutscene.segIndex=0;
+    cutscene.segTime=0;
+    cutscene.onDone=onDone||null;
+
     document.body.classList.add('cutscene-active');
-    document.getElementById('letterbox-top').style.height = '12%';
-    document.getElementById('letterbox-bottom').style.height = '12%';
-    document.getElementById('cutscene-skip').style.display = 'block';
-    if (document.pointerLockElement === document.body) document.exitPointerLock();
-    velocity.set(0, 0, 0);
+
+    document.getElementById(
+        'letterbox-top'
+    ).style.height='12%';
+
+    document.getElementById(
+        'letterbox-bottom'
+    ).style.height='12%';
+
+    document.getElementById(
+        'cutscene-skip'
+    ).style.display='block';
+
+    if(
+        document.pointerLockElement===
+        document.body
+    ){
+        document.exitPointerLock();
+    }
+
+    velocity.set(0,0,0);
 }
 
-function endCutscene() {
-    if (!cutscene.active) return;
-    cutscene.active = false;
-    document.body.classList.remove('cutscene-active');
-    document.getElementById('letterbox-top').style.height = '0';
-    document.getElementById('letterbox-bottom').style.height = '0';
-    document.getElementById('cutscene-skip').style.display = 'none';
-    document.getElementById('cutscene-subtitle').style.display = 'none';
-    const done = cutscene.onDone;
-    cutscene.onDone = null;
-    if (done) done();
+function endCutscene(){
+
+    if(!cutscene.active) return;
+
+    cutscene.active=false;
+
+    document.body.classList.remove(
+        'cutscene-active'
+    );
+
+    document.getElementById(
+        'letterbox-top'
+    ).style.height='0';
+
+    document.getElementById(
+        'letterbox-bottom'
+    ).style.height='0';
+
+    document.getElementById(
+        'cutscene-skip'
+    ).style.display='none';
+
+    document.getElementById(
+        'cutscene-subtitle'
+    ).style.display='none';
+
+    const done=cutscene.onDone;
+
+    cutscene.onDone=null;
+
+    if(done) done();
 }
 
-function updateCutscene(dt) {
-    const seg = cutscene.segments[cutscene.segIndex];
-    if (!seg) { endCutscene(); return; }
-    cutscene.segTime += dt;
-    const t = Math.min(cutscene.segTime / seg.duration, 1);
-    const prevSeg = cutscene.segments[cutscene.segIndex - 1];
-    const fromPos = prevSeg ? prevSeg.pos : seg.pos;
-    const fromLook = prevSeg ? prevSeg.look : seg.look;
-    const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    camera.position.lerpVectors(fromPos, seg.pos, ease);
-    const lookPoint = new THREE.Vector3().lerpVectors(fromLook, seg.look, ease);
+function updateCutscene(dt){
+
+    const seg=
+        cutscene.segments[
+            cutscene.segIndex
+        ];
+
+    if(!seg){
+        endCutscene();
+        return;
+    }
+
+    cutscene.segTime+=dt;
+
+    const t=Math.min(
+        cutscene.segTime/seg.duration,
+        1
+    );
+
+    const prev=
+        cutscene.segments[
+            cutscene.segIndex-1
+        ];
+
+    const fromPos=
+        prev ?
+        prev.pos :
+        camera.position.clone();
+
+    const fromLook=
+        prev ?
+        prev.look :
+        player.position.clone().add(
+            new THREE.Vector3(0,1.5,0)
+        );
+
+    const smooth=
+        t*t*(3-2*t);
+
+    camera.position.lerpVectors(
+        fromPos,
+        seg.pos,
+        smooth
+    );
+
+    const lookPoint=
+        new THREE.Vector3()
+        .lerpVectors(
+            fromLook,
+            seg.look,
+            smooth
+        );
+
     camera.lookAt(lookPoint);
 
-    const subtitle = document.getElementById('cutscene-subtitle');
-    if (seg.text) {
-        subtitle.style.display = 'block';
-        subtitle.innerText = seg.text;
-    } else {
-        subtitle.style.display = 'none';
+    const subtitle=
+        document.getElementById(
+            'cutscene-subtitle'
+        );
+
+    if(seg.text){
+
+        subtitle.style.display='block';
+        subtitle.innerText=seg.text;
+
+        subtitle.style.opacity=
+            t<.15 ?
+            t/.15 :
+            t>.85 ?
+            (1-t)/.15 :
+            1;
+
+    }else{
+
+        subtitle.style.display='none';
     }
 
-    if (t >= 1) {
+    if(t>=1){
+
         cutscene.segIndex++;
-        cutscene.segTime = 0;
-        if (cutscene.segIndex >= cutscene.segments.length) endCutscene();
+        cutscene.segTime=0;
+
+        if(
+            cutscene.segIndex>=
+            cutscene.segments.length
+        ){
+            endCutscene();
+        }
     }
 }
 
-document.getElementById('cutscene-skip').addEventListener('click', endCutscene);
-document.getElementById('cutscene-skip').addEventListener('touchstart', e => { e.preventDefault(); endCutscene(); }, { passive: false });
+document.getElementById(
+    'cutscene-skip'
+).onclick=endCutscene;
 
-function triggerIntroCutscene() {
-    const startPos = player.position.clone();
-    playCutscene([
-        {
-            duration: 3.5,
-            pos: new THREE.Vector3(startPos.x + 15, startPos.y + 25, startPos.z + 30),
-            look: new THREE.Vector3(startPos.x, startPos.y + 2, startPos.z),
-            text: "DISPATCH: Rogue syndicate units detected on city rooftops!"
-        },
-        {
-            duration: 3.0,
-            pos: new THREE.Vector3(startPos.x - 4, startPos.y + 3, startPos.z + 6),
-            look: new THREE.Vector3(startPos.x, startPos.y + 1.8, startPos.z),
-            text: "Time to keep the city safe. Web-sling into action!"
-        }
-    ]);
-}
-
-function triggerQuestCompleteCutscene(title) {
-    const p = player.position.clone();
-    playCutscene([
-        {
-            duration: 2.8,
-            pos: new THREE.Vector3(p.x, p.y + 2, p.z - 7),
-            look: new THREE.Vector3(p.x, p.y + 1.5, p.z),
-            text: `QUEST COMPLETE: ${title}! District secured!`
-        }
-    ]);
-}
 
 /* =========================================================
-   RENDERER / SCENE
+SCENE
 ========================================================= */
-const container = document.getElementById('canvas-container');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x93c5fd);
 
-const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1400);
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isTouchDevice ? 2 : 2.5));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-container.appendChild(renderer.domElement);
+const container=
+    document.getElementById(
+        'canvas-container'
+    );
 
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.7);
-scene.add(hemiLight);
+const scene=new THREE.Scene();
+
+scene.background=
+    new THREE.Color(0x93c5fd);
+
+const camera=
+    new THREE.PerspectiveCamera(
+        65,
+        innerWidth/innerHeight,
+        .1,
+        1400
+    );
+
+const renderer=
+    new THREE.WebGLRenderer({
+        antialias:true,
+        powerPreference:'high-performance'
+    });
+
+renderer.setPixelRatio(
+    Math.min(
+        devicePixelRatio||1,
+        isTouchDevice?2:2.5
+    )
+);
+
+renderer.setSize(
+    innerWidth,
+    innerHeight
+);
+
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=
+    THREE.PCFSoftShadowMap;
+
+container.appendChild(
+    renderer.domElement
+);
+
+scene.add(
+    new THREE.HemisphereLight(
+        0xffffff,
+        0x334155,
+        .7
+    )
+);
+
 
 /* =========================================================
-   CITY & ENVIRONMENT
+CITY
 ========================================================= */
-const cityGrid = 15;
-const blockSpacing = 48;
-const mapHalfSize = (cityGrid / 2) * blockSpacing + 40;
 
-scene.fog = new THREE.FogExp2(0x93c5fd, 0.0022);
+const cityGrid=15;
+const blockSpacing=48;
 
-const sun = new THREE.DirectionalLight(0xfffbeb, 1.2);
-sun.position.set(160, 320, 120);
-sun.castShadow = true;
-sun.shadow.mapSize.width = isTouchDevice ? 1024 : 2048;
-sun.shadow.mapSize.height = isTouchDevice ? 1024 : 2048;
-const shadowDist = mapHalfSize * 0.55;
-sun.shadow.camera.left = -shadowDist; sun.shadow.camera.right = shadowDist;
-sun.shadow.camera.top = shadowDist; sun.shadow.camera.bottom = -shadowDist;
-sun.shadow.camera.far = 700;
+const mapHalfSize=
+    cityGrid/2*blockSpacing+40;
+
+scene.fog=
+    new THREE.FogExp2(
+        0x93c5fd,
+        .0022
+    );
+
+const sun=
+    new THREE.DirectionalLight(
+        0xfffbeb,
+        1.2
+    );
+
+sun.position.set(
+    160,
+    320,
+    120
+);
+
+sun.castShadow=true;
+
+sun.shadow.mapSize.width=
+    isTouchDevice?1024:2048;
+
+sun.shadow.mapSize.height=
+    isTouchDevice?1024:2048;
+
 scene.add(sun);
 
-function createBuildingTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(0, 0, 128, 128);
-    ctx.fillStyle = '#bae6fd';
-    for (let y = 8; y < 128; y += 24) {
-        for (let x = 8; x < 128; x += 24) {
-            ctx.fillRect(x, y, 14, 14);
+function createBuildingTexture(){
+
+    const c=
+        document.createElement('canvas');
+
+    c.width=128;
+    c.height=128;
+
+    const ctx=c.getContext('2d');
+
+    ctx.fillStyle='#1e293b';
+    ctx.fillRect(0,0,128,128);
+
+    ctx.fillStyle='#bae6fd';
+
+    for(let y=8;y<128;y+=24){
+        for(let x=8;x<128;x+=24){
+            ctx.fillRect(
+                x,
+                y,
+                14,
+                14
+            );
         }
     }
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    return tex;
+
+    return new THREE.CanvasTexture(c);
 }
-const windowTexture = createBuildingTexture();
 
-const buildings = [];
+const windowTexture=
+    createBuildingTexture();
 
-const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(cityGrid * blockSpacing * 3.4, cityGrid * blockSpacing * 3.4),
-    new THREE.MeshStandardMaterial({ color: 0x181e29, roughness: 0.9 })
-);
-ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
+const buildings=[];
+
+const ground=
+    new THREE.Mesh(
+        new THREE.PlaneGeometry(
+            cityGrid*
+            blockSpacing*
+            3.4,
+            cityGrid*
+            blockSpacing*
+            3.4
+        ),
+        new THREE.MeshStandardMaterial({
+            color:0x181e29,
+            roughness:.9
+        })
+    );
+
+ground.rotation.x=-Math.PI/2;
+ground.receiveShadow=true;
 scene.add(ground);
 
-for (let x = -cityGrid / 2; x <= cityGrid / 2; x++) {
-    for (let z = -cityGrid / 2; z <= cityGrid / 2; z++) {
-        if (Math.abs(x) <= 1 && Math.abs(z) <= 1) continue;
-        if (Math.random() > 0.32) {
-            const h = 45 + Math.random() * 85;
-            const w = blockSpacing * 0.72;
-            const tex = windowTexture.clone();
-            tex.repeat.set(2, Math.floor(h / 8));
-            tex.needsUpdate = true;
+for(
+    let x=-cityGrid/2;
+    x<=cityGrid/2;
+    x++
+){
 
-            const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.35, metalness: 0.2 });
-            const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat);
-            const px = x * blockSpacing, pz = z * blockSpacing;
-            b.position.set(px, h / 2, pz);
-            b.castShadow = true;
-            b.receiveShadow = true;
+    for(
+        let z=-cityGrid/2;
+        z<=cityGrid/2;
+        z++
+    ){
+
+        if(
+            Math.abs(x)<=1 &&
+            Math.abs(z)<=1
+        ) continue;
+
+        if(Math.random()>.32){
+
+            const h=
+                45+
+                Math.random()*85;
+
+            const w=
+                blockSpacing*.72;
+
+            const tex=
+                windowTexture.clone();
+
+            tex.repeat.set(
+                2,
+                Math.floor(h/8)
+            );
+
+            tex.needsUpdate=true;
+
+            const mat=
+                new THREE.MeshStandardMaterial({
+                    map:tex,
+                    roughness:.35,
+                    metalness:.2
+                });
+
+            const b=
+                new THREE.Mesh(
+                    new THREE.BoxGeometry(
+                        w,h,w
+                    ),
+                    mat
+                );
+
+            const px=
+                x*blockSpacing;
+
+            const pz=
+                z*blockSpacing;
+
+            b.position.set(
+                px,
+                h/2,
+                pz
+            );
+
+            b.castShadow=true;
+            b.receiveShadow=true;
+
             scene.add(b);
 
-            b.userData.halfW = w / 2;
-            b.userData.height = h;
-            b.userData.box = new THREE.Box3(
-                new THREE.Vector3(px - w / 2, 0, pz - w / 2),
-                new THREE.Vector3(px + w / 2, h, pz + w / 2)
-            );
+            b.userData.height=h;
+
+            b.userData.cullRadiusSq=
+                (w/2+8)*
+                (w/2+8);
+
+            b.userData.box=
+                new THREE.Box3(
+                    new THREE.Vector3(
+                        px-w/2,
+                        0,
+                        pz-w/2
+                    ),
+                    new THREE.Vector3(
+                        px+w/2,
+                        h,
+                        pz+w/2
+                    )
+                );
+
             buildings.push(b);
         }
     }
 }
 
+
 /* =========================================================
-   HERO TEXTURES
+HERO
 ========================================================= */
-function makeWebSuitTexture(baseColor, webColor) {
-    const size = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = size; canvas.height = size;
-    const ctx = canvas.getContext('2d');
 
-    const toCss = (hex) => '#' + hex.toString(16).padStart(6, '0');
-    ctx.fillStyle = toCss(baseColor);
-    ctx.fillRect(0, 0, size, size);
+function makeWebSuitTexture(
+    baseColor,
+    webColor
+){
 
-    ctx.strokeStyle = toCss(webColor);
-    ctx.lineWidth = 2.2;
-    ctx.globalAlpha = 0.85;
+    const size=256;
 
-    const cx = size / 2, cy = size / 2;
-    for (let a = 0; a < Math.PI * 2; a += Math.PI / 10) {
+    const c=
+        document.createElement('canvas');
+
+    c.width=size;
+    c.height=size;
+
+    const ctx=c.getContext('2d');
+
+    const css=
+        hex=>'#'+
+        hex.toString(16)
+        .padStart(6,'0');
+
+    ctx.fillStyle=css(baseColor);
+    ctx.fillRect(
+        0,0,size,size
+    );
+
+    ctx.strokeStyle=css(webColor);
+    ctx.lineWidth=2.2;
+    ctx.globalAlpha=.85;
+
+    const cx=size/2;
+    const cy=size/2;
+
+    for(
+        let a=0;
+        a<Math.PI*2;
+        a+=Math.PI/10
+    ){
+
         ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(a) * size, cy + Math.sin(a) * size);
+
+        ctx.moveTo(cx,cy);
+
+        ctx.lineTo(
+            cx+
+            Math.cos(a)*size,
+            cy+
+            Math.sin(a)*size
+        );
+
         ctx.stroke();
     }
-    for (let r = 18; r < size; r += 22) {
+
+    for(
+        let r=18;
+        r<size;
+        r+=22
+    ){
+
         ctx.beginPath();
-        for (let a = 0; a <= Math.PI * 2 + 0.2; a += Math.PI / 10) {
-            const wob = 1 + Math.sin(a * 5) * 0.03;
-            const px = cx + Math.cos(a) * r * wob;
-            const py = cy + Math.sin(a) * r * wob;
-            if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+
+        for(
+            let a=0;
+            a<=Math.PI*2+.2;
+            a+=Math.PI/10
+        ){
+
+            const wob=
+                1+
+                Math.sin(a*5)*.03;
+
+            const px=
+                cx+
+                Math.cos(a)*
+                r*wob;
+
+            const py=
+                cy+
+                Math.sin(a)*
+                r*wob;
+
+            if(a===0)
+                ctx.moveTo(px,py);
+            else
+                ctx.lineTo(px,py);
         }
+
         ctx.stroke();
     }
 
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    tex.anisotropy = 4;
-    return tex;
+    return new THREE.CanvasTexture(c);
 }
 
-function makeSpiderEmblemTexture() {
-    const size = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = size; canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = '#0a0a0a';
-    const cx = size / 2, cy = size / 2 - 10;
+function makeSpiderEmblemTexture(){
+
+    const c=
+        document.createElement('canvas');
+
+    c.width=256;
+    c.height=256;
+
+    const ctx=c.getContext('2d');
+
+    ctx.fillStyle='#0a0a0a';
+
+    const cx=128;
+    const cy=118;
 
     ctx.beginPath();
-    ctx.ellipse(cx, cy, 18, 34, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - 46, 13, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(
+        cx,cy,
+        18,34,
+        0,0,Math.PI*2
+    );
     ctx.fill();
 
-    ctx.lineWidth = 7;
-    ctx.strokeStyle = '#0a0a0a';
-    ctx.lineCap = 'round';
-    const legAnglesL = [-0.35, -0.65, -1.0, -1.35];
-    const legAnglesR = [0.35, 0.65, 1.0, 1.35];
-    [...legAnglesL, ...legAnglesR].forEach(a => {
+    ctx.beginPath();
+    ctx.ellipse(
+        cx,
+        cy-46,
+        13,
+        16,
+        0,0,Math.PI*2
+    );
+    ctx.fill();
+
+    ctx.lineWidth=7;
+    ctx.lineCap='round';
+
+    const left=[
+        -.35,
+        -.65,
+        -1,
+        -1.35
+    ];
+
+    const right=[
+        .35,
+        .65,
+        1,
+        1.35
+    ];
+
+    [...left,...right].forEach(a=>{
+
         ctx.beginPath();
-        ctx.moveTo(cx, cy - 6);
-        const midx = cx + Math.sin(a) * 60;
-        const midy = cy - 6 + Math.cos(a) * 20;
-        const endx = cx + Math.sin(a) * 105;
-        const endy = cy - 6 + Math.cos(a) * 70;
-        ctx.quadraticCurveTo(midx, midy, endx, endy);
+
+        ctx.moveTo(
+            cx,
+            cy-6
+        );
+
+        const mx=
+            cx+
+            Math.sin(a)*60;
+
+        const my=
+            cy-6+
+            Math.cos(a)*20;
+
+        const ex=
+            cx+
+            Math.sin(a)*105;
+
+        const ey=
+            cy-6+
+            Math.cos(a)*70;
+
+        ctx.quadraticCurveTo(
+            mx,my,ex,ey
+        );
+
         ctx.stroke();
     });
 
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.needsUpdate = true;
-    return tex;
+    return new THREE.CanvasTexture(c);
 }
 
-/* =========================================================
-   ARTICULATED HERO RIG & SEGMENTED LIMBS
-========================================================= */
-const player = new THREE.Group();
-player.position.set(0, 0, 0);
+const player=
+    new THREE.Group();
+
+player.position.set(
+    0,2,0
+);
+
 scene.add(player);
 
-let suitTexture = makeWebSuitTexture(SUITS.classic.primary, SUITS.classic.web);
-const primarySuitMat = new THREE.MeshStandardMaterial({ map: suitTexture, roughness: 0.4, metalness: 0.15 });
-const blueSuitMat = new THREE.MeshStandardMaterial({ color: SUITS.classic.blue, roughness: 0.35, metalness: 0.15 });
-const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xbfe8ff, emissiveIntensity: 0.9, roughness: 0.2 });
+let suitTexture=
+    makeWebSuitTexture(
+        SUITS.classic.primary,
+        SUITS.classic.web
+    );
 
-// Torso / Chest / Spine
-const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.88, 0.4), primarySuitMat);
-torso.position.y = 1.35;
-torso.castShadow = true;
+const primarySuitMat=
+    new THREE.MeshStandardMaterial({
+        map:suitTexture,
+        roughness:.4,
+        metalness:.15
+    });
+
+const blueSuitMat=
+    new THREE.MeshStandardMaterial({
+        color:SUITS.classic.blue,
+        roughness:.35,
+        metalness:.15
+    });
+
+const eyeMat=
+    new THREE.MeshStandardMaterial({
+        color:0xffffff,
+        emissive:0xbfe8ff,
+        emissiveIntensity:.9
+    });
+
+const torso=
+    new THREE.Mesh(
+        new THREE.BoxGeometry(
+            .72,.88,.4
+        ),
+        primarySuitMat
+    );
+
+torso.position.y=1.35;
+torso.castShadow=true;
 player.add(torso);
 
-const emblemTex = makeSpiderEmblemTexture();
-const emblemMat = new THREE.MeshBasicMaterial({ map: emblemTex, transparent: true });
-const emblemGeo = new THREE.PlaneGeometry(0.5, 0.5);
-const emblemFront = new THREE.Mesh(emblemGeo, emblemMat);
-emblemFront.position.set(0, 1.42, 0.205);
+const emblemMat=
+    new THREE.MeshBasicMaterial({
+        map:makeSpiderEmblemTexture(),
+        transparent:true
+    });
+
+const emblemGeo=
+    new THREE.PlaneGeometry(
+        .5,.5
+    );
+
+const emblemFront=
+    new THREE.Mesh(
+        emblemGeo,
+        emblemMat
+    );
+
+emblemFront.position.set(
+    0,1.42,.205
+);
+
 player.add(emblemFront);
-const emblemBack = new THREE.Mesh(emblemGeo, emblemMat);
-emblemBack.position.set(0, 1.42, -0.205);
-emblemBack.rotation.y = Math.PI;
+
+const emblemBack=
+    emblemFront.clone();
+
+emblemBack.position.z=-.205;
+emblemBack.rotation.y=Math.PI;
+
 player.add(emblemBack);
 
-const hip = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.3, 0.36), blueSuitMat);
-hip.position.y = 0.85;
+const hip=
+    new THREE.Mesh(
+        new THREE.BoxGeometry(
+            .66,.3,.36
+        ),
+        blueSuitMat
+    );
+
+hip.position.y=.85;
 player.add(hip);
 
-const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 20, 20), primarySuitMat);
-head.position.y = 1.97;
-head.scale.set(0.92, 1.1, 0.96);
-head.castShadow = true;
+const belt=
+    new THREE.Mesh(
+        new THREE.BoxGeometry(
+            .7,.09,.4
+        ),
+        new THREE.MeshStandardMaterial({
+            color:0x111111
+        })
+    );
+
+belt.position.y=1;
+player.add(belt);
+
+const head=
+    new THREE.Mesh(
+        new THREE.SphereGeometry(
+            .27,20,20
+        ),
+        primarySuitMat
+    );
+
+head.position.y=1.97;
+head.scale.set(
+    .92,1.1,.96
+);
+
 player.add(head);
 
-const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), eyeMat);
-leftEye.position.set(0.1, 2.0, 0.23);
-leftEye.scale.set(1.3, 0.85, 0.6);
-const rightEye = leftEye.clone();
-rightEye.position.x = -0.1;
-player.add(leftEye, rightEye);
+const leftEye=
+    new THREE.Mesh(
+        new THREE.SphereGeometry(
+            .09,12,12
+        ),
+        eyeMat
+    );
 
-// Articulated Arms (Upper arm + Lower arm joint)
-function createArm() {
-    const shoulder = new THREE.Group();
-    
-    const upperArm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.42, 0.2), primarySuitMat);
-    upperArm.position.y = -0.21;
-    upperArm.castShadow = true;
-    shoulder.add(upperArm);
+leftEye.position.set(
+    .1,2,.23
+);
 
-    const elbow = new THREE.Group();
-    elbow.position.y = -0.42;
-    shoulder.add(elbow);
+leftEye.scale.set(
+    1.3,.85,.6
+);
 
-    const lowerArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.42, 0.18), primarySuitMat);
-    lowerArm.position.y = -0.21;
-    lowerArm.castShadow = true;
-    elbow.add(lowerArm);
+const rightEye=
+    leftEye.clone();
 
-    return { shoulder, elbow };
+rightEye.position.x=-.1;
+
+player.add(
+    leftEye,
+    rightEye
+);
+
+function makeLimb(
+    w,h,d,mat
+){
+
+    return new THREE.Mesh(
+        new THREE.BoxGeometry(
+            w,h,d
+        ),
+        mat
+    );
 }
 
-const leftArm = createArm();
-leftArm.shoulder.position.set(0.48, 1.68, 0);
-player.add(leftArm.shoulder);
+const leftArmPivot=
+    new THREE.Group();
 
-const rightArm = createArm();
-rightArm.shoulder.position.set(-0.48, 1.68, 0);
-player.add(rightArm.shoulder);
+leftArmPivot.position.set(
+    .5,1.66,0
+);
 
-// Articulated Legs (Upper leg + Lower leg joint)
-function createLeg() {
-    const hipJoint = new THREE.Group();
-    
-    const upperLeg = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.45, 0.23), blueSuitMat);
-    upperLeg.position.y = -0.225;
-    upperLeg.castShadow = true;
-    hipJoint.add(upperLeg);
+const leftArmMesh=
+    makeLimb(
+        .21,.76,.21,
+        primarySuitMat
+    );
 
-    const knee = new THREE.Group();
-    knee.position.y = -0.45;
-    hipJoint.add(knee);
+leftArmMesh.position.y=-.36;
+leftArmPivot.add(leftArmMesh);
+player.add(leftArmPivot);
 
-    const lowerLeg = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.45, 0.21), primarySuitMat);
-    lowerLeg.position.y = -0.225;
-    lowerLeg.castShadow = true;
-    knee.add(lowerLeg);
+const rightArmPivot=
+    new THREE.Group();
 
-    return { hipJoint, knee };
+rightArmPivot.position.set(
+    -.5,1.66,0
+);
+
+const rightArmMesh=
+    makeLimb(
+        .21,.76,.21,
+        primarySuitMat
+    );
+
+rightArmMesh.position.y=-.36;
+rightArmPivot.add(rightArmMesh);
+player.add(rightArmPivot);
+
+const leftLegPivot=
+    new THREE.Group();
+
+leftLegPivot.position.set(
+    .21,.75,0
+);
+
+const leftLegMesh=
+    makeLimb(
+        .23,.82,.23,
+        blueSuitMat
+    );
+
+leftLegMesh.position.y=-.41;
+leftLegPivot.add(leftLegMesh);
+player.add(leftLegPivot);
+
+const rightLegPivot=
+    new THREE.Group();
+
+rightLegPivot.position.set(
+    -.21,.75,0
+);
+
+const rightLegMesh=
+    makeLimb(
+        .23,.82,.23,
+        blueSuitMat
+    );
+
+rightLegMesh.position.y=-.41;
+rightLegPivot.add(rightLegMesh);
+player.add(rightLegPivot);
+
+function applySuitVisuals(k){
+
+    const s=SUITS[k];
+
+    suitTexture=
+        makeWebSuitTexture(
+            s.primary,
+            s.web
+        );
+
+    primarySuitMat.map=
+        suitTexture;
+
+    primarySuitMat.needsUpdate=true;
+
+    blueSuitMat.color.setHex(
+        s.blue
+    );
 }
 
-const leftLeg = createLeg();
-leftLeg.hipJoint.position.set(0.21, 0.75, 0);
-player.add(leftLeg.hipJoint);
-
-const rightLeg = createLeg();
-rightLeg.hipJoint.position.set(-0.21, 0.75, 0);
-player.add(rightLeg.hipJoint);
-
-function applySuitVisuals(key) {
-    const s = SUITS[key];
-    suitTexture = makeWebSuitTexture(s.primary, s.web);
-    primarySuitMat.map = suitTexture;
-    primarySuitMat.needsUpdate = true;
-    blueSuitMat.color.setHex(s.blue);
-}
 
 /* =========================================================
-   REALISTIC MULTI-STRAND WEB ROPE
+WEB
 ========================================================= */
-const WEB_SEGMENTS = 28;
-const webGroup = new THREE.Group();
-scene.add(webGroup);
 
-const webMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    emissive: 0xe0f2fe,
-    emissiveIntensity: 0.8,
-    roughness: 0.1,
-    metalness: 0.1
-});
+const webCurve=
+    new THREE.CatmullRomCurve3([
+        new THREE.Vector3(),
+        new THREE.Vector3(),
+        new THREE.Vector3()
+    ]);
 
-const mainWebCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
-let mainWebGeo = new THREE.TubeGeometry(mainWebCurve, WEB_SEGMENTS, 0.045, 8, false);
-const mainWebMesh = new THREE.Mesh(mainWebGeo, webMat);
-webGroup.add(mainWebMesh);
+let webGeo=
+    new THREE.TubeGeometry(
+        webCurve,
+        16,
+        .035,
+        6,
+        false
+    );
 
-const spiralStrands = [];
-for (let i = 0; i < 3; i++) {
-    const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
-    const geo = new THREE.TubeGeometry(curve, WEB_SEGMENTS, 0.018, 6, false);
-    const mesh = new THREE.Mesh(geo, webMat);
-    webGroup.add(mesh);
-    spiralStrands.push({ curve, mesh });
-}
-webGroup.visible = false;
-
-function updateWebRope(handPos, anchorPos) {
-    const points = [];
-    const dist = handPos.distanceTo(anchorPos);
-    
-    for (let i = 0; i <= WEB_SEGMENTS; i++) {
-        const t = i / WEB_SEGMENTS;
-        const p = new THREE.Vector3().lerpVectors(handPos, anchorPos, t);
-        const sag = Math.sin(t * Math.PI) * Math.min(dist * 0.08, 2.5);
-        p.y -= sag;
-        points.push(p);
-    }
-    
-    mainWebCurve.points = points;
-    mainWebMesh.geometry.dispose();
-    mainWebMesh.geometry = new THREE.TubeGeometry(mainWebCurve, WEB_SEGMENTS, 0.042, 8, false);
-
-    for (let s = 0; s < spiralStrands.length; s++) {
-        const strandPoints = [];
-        const phaseShift = (s * Math.PI * 2) / 3;
-        
-        for (let i = 0; i <= WEB_SEGMENTS; i++) {
-            const baseP = points[i];
-            const t = i / WEB_SEGMENTS;
-            const radius = 0.12 * Math.sin(t * Math.PI);
-            const angle = t * Math.PI * 12 + phaseShift;
-            
-            const offset = new THREE.Vector3(
-                Math.cos(angle) * radius,
-                Math.sin(angle) * radius,
-                Math.sin(angle * 0.5) * radius
-            );
-            strandPoints.push(baseP.clone().add(offset));
-        }
-        
-        spiralStrands[s].curve.points = strandPoints;
-        spiralStrands[s].mesh.geometry.dispose();
-        spiralStrands[s].mesh.geometry = new THREE.TubeGeometry(spiralStrands[s].curve, WEB_SEGMENTS, 0.016, 6, false);
-    }
-}
-
-/* =========================================================
-   ENEMIES & COMBAT
-========================================================= */
-const enemies = [];
-const enemyMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 });
-const enemyHeadMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.5 });
-
-function spawnCrimeEvent() {
-    if (enemies.length > 0) return;
-    const count = 3 + Math.floor(Math.random() * 3);
-    const validBuildings = buildings.filter(b => b.userData.height > 35);
-    if (validBuildings.length === 0) return;
-    
-    const b = validBuildings[Math.floor(Math.random() * validBuildings.length)];
-    const roofY = b.userData.height;
-
-    for (let i = 0; i < count; i++) {
-        const eGroup = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.4), enemyMat);
-        body.position.y = 0.5;
-        eGroup.add(body);
-        const eHead = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), enemyHeadMat);
-        eHead.position.y = 1.2;
-        eGroup.add(eHead);
-
-        const offsetX = (Math.random() - 0.5) * (b.userData.halfW * 1.2);
-        const offsetZ = (Math.random() - 0.5) * (b.userData.halfW * 1.2);
-        eGroup.position.set(b.position.x + offsetX, roofY, b.position.z + offsetZ);
-
-        eGroup.userData = { hp: 60, maxHp: 60 };
-        scene.add(eGroup);
-        enemies.push(eGroup);
-    }
-
-    document.getElementById('crime-alert').style.display = 'block';
-    document.getElementById('thug-count').innerText = enemies.length;
-}
-
-setInterval(spawnCrimeEvent, 12000);
-
-const targetRing = document.getElementById('target-ring');
-function updateTargetRing() {
-    let closest = null, minDist = 22;
-    enemies.forEach(e => {
-        const d = player.position.distanceTo(e.position);
-        if (d < minDist) { minDist = d; closest = e; }
+const webMat=
+    new THREE.MeshStandardMaterial({
+        color:0xffffff,
+        emissive:0x93c5fd,
+        emissiveIntensity:.6
     });
 
-    if (closest) {
-        const proj = closest.position.clone().project(camera);
-        if (proj.z < 1) {
-            const x = (proj.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-(proj.y * 0.5) + 0.5) * window.innerHeight;
-            targetRing.style.left = `${x}px`;
-            targetRing.style.top = `${y}px`;
-            targetRing.style.display = 'block';
-            document.getElementById('combat-indicator').style.display = 'block';
-            return;
-        }
-    }
-    targetRing.style.display = 'none';
-    document.getElementById('combat-indicator').style.display = 'none';
+const webMesh=
+    new THREE.Mesh(
+        webGeo,
+        webMat
+    );
+
+webMesh.visible=false;
+
+scene.add(webMesh);
+
+function updateWebRope(
+    hand,
+    anchor
+){
+
+    const mid=
+        hand.clone()
+        .lerp(anchor,.5);
+
+    mid.y-=1.6;
+
+    webCurve.points=[
+        hand,
+        mid,
+        anchor
+    ];
+
+    webMesh.geometry.dispose();
+
+    webMesh.geometry=
+        new THREE.TubeGeometry(
+            webCurve,
+            16,
+            .035,
+            6,
+            false
+        );
 }
+
+const anchorMarker=
+    new THREE.Mesh(
+        new THREE.SphereGeometry(
+            .4,12,12
+        ),
+        new THREE.MeshBasicMaterial({
+            color:0x38bdf8
+        })
+    );
+
+anchorMarker.visible=false;
+scene.add(anchorMarker);
+
 
 /* =========================================================
-   INPUT & CONTROLS
+ENEMIES
 ========================================================= */
-const velocity = new THREE.Vector3();
-let isGrounded = false;
 
-const keys = {};
-window.addEventListener('keydown', e => { keys[e.code] = true; handleActionKeys(e.code); });
-window.addEventListener('keyup', e => { keys[e.code] = false; });
+function createBandit(){
 
-function handleActionKeys(code) {
-    if (code === 'KeyU') toggleShop();
-    if (code === 'KeyF') triggerAttack();
-    if (code === 'KeyE') startSwing();
-    if (code === 'Space') jump();
-}
+    const group=
+        new THREE.Group();
 
-let yaw = 0, pitch = 0;
-document.addEventListener('mousemove', e => {
-    if (document.pointerLockElement === document.body) {
-        yaw -= e.movementX * 0.0022;
-        pitch -= e.movementY * 0.0022;
-        pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
-    }
-});
+    const skinMat=
+        new THREE.MeshStandardMaterial({
+            color:0xe0a899
+        });
 
-container.addEventListener('click', () => {
-    if (!isTouchDevice && !state.shopOpen && !cutscene.active) {
-        document.body.requestPointerLock();
-    }
-});
+    const clothesMat=
+        new THREE.MeshStandardMaterial({
+            color:0x27272a
+        });
 
-let touchLookId = null, touchMoveId = null;
-let touchStartPos = { x: 0, y: 0 }, touchLookStart = { x: 0, y: 0 };
-const joyBase = document.getElementById('joystick-base');
-const joyStick = document.getElementById('joystick-stick');
-let joyVector = { x: 0, y: 0 };
+    const pantsMat=
+        new THREE.MeshStandardMaterial({
+            color:0x1e293b
+        });
 
-if (isTouchDevice) {
-    const moveZone = document.getElementById('move-zone');
-    const lookZone = document.getElementById('look-zone');
+    const maskMat=
+        new THREE.MeshStandardMaterial({
+            color:0x111111
+        });
 
-    moveZone.addEventListener('touchstart', e => {
-        const t = e.changedTouches[0];
-        touchMoveId = t.identifier;
-        touchStartPos = { x: t.clientX, y: t.clientY };
-        joyBase.style.left = `${t.clientX}px`;
-        joyBase.style.top = `${t.clientY}px`;
-        joyBase.style.display = 'block';
-        joyStick.style.transform = `translate(-50%, -50%)`;
-    }, { passive: false });
+    const torsoM=
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .65,.8,.35
+            ),
+            clothesMat
+        );
 
-    moveZone.addEventListener('touchmove', e => {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            if (t.identifier === touchMoveId) {
-                const dx = t.clientX - touchStartPos.x;
-                const dy = t.clientY - touchStartPos.y;
-                const dist = Math.min(Math.hypot(dx, dy), 45);
-                const angle = Math.atan2(dy, dx);
-                joyVector.x = (Math.cos(angle) * dist) / 45;
-                joyVector.y = (Math.sin(angle) * dist) / 45;
-                joyStick.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
-            }
-        }
-    }, { passive: false });
+    torsoM.position.y=1.3;
+    group.add(torsoM);
 
-    const endMove = e => {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === touchMoveId) {
-                touchMoveId = null;
-                joyVector = { x: 0, y: 0 };
-                joyBase.style.display = 'none';
-            }
-        }
+    const headM=
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .22,12,12
+            ),
+            skinMat
+        );
+
+    headM.position.y=1.85;
+    group.add(headM);
+
+    const maskM=
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .46,.1,.46
+            ),
+            maskMat
+        );
+
+    maskM.position.y=1.9;
+    group.add(maskM);
+
+    const lArmPivot=
+        new THREE.Group();
+
+    lArmPivot.position.set(
+        .42,1.65,0
+    );
+
+    const lArm=
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .18,.7,.18
+            ),
+            skinMat
+        );
+
+    lArm.position.y=-.35;
+    lArmPivot.add(lArm);
+    group.add(lArmPivot);
+
+    const rArmPivot=
+        new THREE.Group();
+
+    rArmPivot.position.set(
+        -.42,1.65,0
+    );
+
+    const rArm=
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .18,.7,.18
+            ),
+            skinMat
+        );
+
+    rArm.position.y=-.35;
+    rArmPivot.add(rArm);
+    group.add(rArmPivot);
+
+    const lLeg=
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .2,.75,.2
+            ),
+            pantsMat
+        );
+
+    lLeg.position.set(
+        .18,.45,0
+    );
+
+    const rLeg=lLeg.clone();
+
+    rLeg.position.x=-.18;
+
+    group.add(
+        lLeg,
+        rLeg
+    );
+
+    return {
+        group,
+        torsoM,
+        lArmPivot,
+        rArmPivot
     };
-    moveZone.addEventListener('touchend', endMove);
-    moveZone.addEventListener('touchcancel', endMove);
+}
 
-    lookZone.addEventListener('touchstart', e => {
-        const t = e.changedTouches[0];
-        touchLookId = t.identifier;
-        touchLookStart = { x: t.clientX, y: t.clientY };
-    }, { passive: false });
+const enemies=[];
 
-    lookZone.addEventListener('touchmove', e => {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-            const t = e.changedTouches[i];
-            if (t.identifier === touchLookId) {
-                const dx = t.clientX - touchLookStart.x;
-                const dy = t.clientY - touchLookStart.y;
-                yaw -= dx * 0.005;
-                pitch -= dy * 0.005;
-                pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
-                touchLookStart = { x: t.clientX, y: t.clientY };
+let activeCrime=false;
+let firstCrimeCutsceneShown=false;
+
+function spawnCrime(){
+
+    if(
+        activeCrime ||
+        buildings.length===0
+    ) return;
+
+    const b=
+        buildings[
+            Math.floor(
+                Math.random()*
+                buildings.length
+            )
+        ];
+
+    const spawnPos=
+        new THREE.Vector3(
+            b.position.x+22,
+            0,
+            b.position.z+10
+        );
+
+    for(let i=0;i<3;i++){
+
+        const bandit=
+            createBandit();
+
+        bandit.group.position.copy(
+            spawnPos
+        );
+
+        bandit.group.position.x+=
+            (Math.random()-.5)*6;
+
+        bandit.group.position.z+=
+            (Math.random()-.5)*6;
+
+        scene.add(
+            bandit.group
+        );
+
+        enemies.push({
+            mesh:bandit.group,
+            torsoM:bandit.torsoM,
+            hp:80,
+            maxHp:80,
+            staggerTimer:0,
+            anim:Math.random()*10
+        });
+    }
+
+    activeCrime=true;
+
+    document.getElementById(
+        'crime-alert'
+    ).style.display='block';
+
+    document.getElementById(
+        'thug-count'
+    ).innerText=enemies.length;
+
+    chatPush(
+        'Dispatch',
+        '🚨 Bandit activity reported nearby!'
+    );
+
+    if(!firstCrimeCutsceneShown){
+
+        firstCrimeCutsceneShown=true;
+
+        playCutscene([
+
+            {
+                pos:camera.position.clone(),
+                look:player.position.clone().add(
+                    new THREE.Vector3(0,1.5,0)
+                ),
+                duration:.1
+            },
+
+            {
+                pos:spawnPos.clone().add(
+                    new THREE.Vector3(18,25,18)
+                ),
+                look:spawnPos.clone().add(
+                    new THREE.Vector3(0,2,0)
+                ),
+                duration:2,
+                text:'🚨 BANDITS SPOTTED!'
+            },
+
+            {
+                pos:player.position.clone().add(
+                    new THREE.Vector3(5,3,8)
+                ),
+                look:player.position.clone().add(
+                    new THREE.Vector3(0,1.4,0)
+                ),
+                duration:1.5,
+                text:'The city needs you.'
             }
-        }
-    }, { passive: false });
-
-    const endLook = e => {
-        for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === touchLookId) touchLookId = null;
-        }
-    };
-    lookZone.addEventListener('touchend', endLook);
-    lookZone.addEventListener('touchcancel', endLook);
-
-    document.getElementById('btn-attack').addEventListener('touchstart', e => { e.preventDefault(); triggerAttack(); });
-    document.getElementById('btn-swing').addEventListener('touchstart', e => { e.preventDefault(); startSwing(); });
-    document.getElementById('btn-swing').addEventListener('touchend', e => { e.preventDefault(); stopSwing(); });
-    document.getElementById('btn-jump').addEventListener('touchstart', e => { e.preventDefault(); jump(); });
-    document.getElementById('btn-run').addEventListener('touchstart', e => {
-        e.preventDefault();
-        state.isRunning = !state.isRunning;
-        document.getElementById('btn-run').classList.toggle('active', state.isRunning);
-    });
+        ]);
+    }
 }
 
-window.addEventListener('mousedown', e => {
-    if (e.button === 2) startSwing();
-    if (e.button === 0 && !state.shopOpen) triggerAttack();
-});
-window.addEventListener('mouseup', e => { if (e.button === 2) stopSwing(); });
-window.addEventListener('contextmenu', e => e.preventDefault());
+setTimeout(
+    spawnCrime,
+    5000
+);
+
 
 /* =========================================================
-   SWING & LOCOMOTION PHYSICS
+ENEMY TRACKER
 ========================================================= */
-const raycaster = new THREE.Raycaster();
 
-function getSwingTarget() {
-    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    raycaster.set(camera.position, dir);
-    const intersects = raycaster.intersectObjects(buildings);
-    if (intersects.length > 0 && intersects[0].distance < 120) {
-        return intersects[0].point;
-    }
-    return null;
-}
+function updateEnemyTracker(){
 
-function startSwing() {
-    if (state.isSwinging) return;
-    const target = getSwingTarget();
-    if (target) {
-        state.isSwinging = true;
-        state.swingAnchor.copy(target);
-        state.swingLength = player.position.distanceTo(target) * 0.88;
-        webGroup.visible = true;
-    } else {
-        showActionMsg("No building in range to attach web!");
-    }
-}
+    const list=
+        document.getElementById(
+            'enemy-tracker-list'
+        );
 
-function stopSwing() {
-    if (state.isSwinging) {
-        state.isSwinging = false;
-        webGroup.visible = false;
-        velocity.y += 6.0;
-    }
-}
+    if(enemies.length===0){
 
-function jump() {
-    if (isGrounded) {
-        velocity.y = 12.5;
-        isGrounded = false;
-    } else if (state.isSwinging) {
-        stopSwing();
-        velocity.y += 10.0;
-    }
-}
+        list.innerHTML=
+            '<div style="color:#94a3b8">No enemies detected.</div>';
 
-function triggerAttack() {
-    if (state.attackCooldown > 0) return;
-    state.attackCooldown = 0.28;
-    state.attackPoseIndex = (state.attackPoseIndex + 1) % 3;
-    state.attackAnimTimer = 0.28;
-
-    const suit = SUITS[state.equippedSuit];
-    let hitAny = false;
-
-    enemies.forEach((e, idx) => {
-        if (player.position.distanceTo(e.position) < 3.8) {
-            e.userData.hp -= suit.damage;
-            hitAny = true;
-            const kb = e.position.clone().sub(player.position).normalize().multiplyScalar(6);
-            e.position.add(kb);
-
-            if (e.userData.hp <= 0) {
-                scene.remove(e);
-                enemies.splice(idx, 1);
-                state.coins += 25;
-                document.getElementById('val-coins').innerText = state.coins;
-                showActionMsg("THUG DEFEATED! +25 🪙");
-            }
-        }
-    });
-
-    if (hitAny && enemies.length === 0) {
-        document.getElementById('crime-alert').style.display = 'none';
-        notifyCrimeSolved();
-    }
-}
-
-/* =========================================================
-   UI & SHOP
-========================================================= */
-function showActionMsg(msg) {
-    const el = document.getElementById('action-msg');
-    el.innerText = msg;
-    el.style.display = 'block';
-    setTimeout(() => { el.style.display = 'none'; }, 2200);
-}
-
-function toggleShop() {
-    state.shopOpen = !state.shopOpen;
-    document.getElementById('shop-modal').style.display = state.shopOpen ? 'block' : 'none';
-    if (state.shopOpen) {
-        renderShopList();
-        if (document.pointerLockElement === document.body) document.exitPointerLock();
-    }
-}
-
-function renderShopList() {
-    const container = document.getElementById('suits-list');
-    container.innerHTML = '';
-    Object.keys(SUITS).forEach(key => {
-        const s = SUITS[key];
-        const item = document.createElement('div');
-        item.className = 'suit-item';
-        const isEquipped = state.equippedSuit === key;
-
-        let btnHtml = '';
-        if (isEquipped) {
-            btnHtml = `<button class="suit-btn equipped">EQUIPPED</button>`;
-        } else if (s.owned) {
-            btnHtml = `<button class="suit-btn" onclick="equipSuit('${key}')">EQUIP</button>`;
-        } else {
-            btnHtml = `<button class="suit-btn" onclick="buySuit('${key}')">BUY (${s.cost} 🪙)</button>`;
-        }
-
-        item.innerHTML = `
-            <div>
-                <b>${s.name}</b><br>
-                <small style="color:#94a3b8">Dmg: x${(s.damage/30).toFixed(1)} | Speed: x${s.speed}</small>
-            </div>
-            ${btnHtml}
-        `;
-        container.appendChild(item);
-    });
-}
-
-window.buySuit = function(key) {
-    const s = SUITS[key];
-    if (state.coins >= s.cost) {
-        state.coins -= s.cost;
-        s.owned = true;
-        document.getElementById('val-coins').innerText = state.coins;
-        equipSuit(key);
-    } else {
-        showActionMsg("Not enough coins!");
-    }
-};
-
-window.equipSuit = function(key) {
-    state.equippedSuit = key;
-    applySuitVisuals(key);
-    document.getElementById('val-suit').innerText = SUITS[key].name;
-    renderShopList();
-};
-
-document.getElementById('btn-shop').addEventListener('click', toggleShop);
-document.getElementById('btn-chat-toggle').addEventListener('click', () => {
-    const p = document.getElementById('chat-panel');
-    p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
-});
-document.getElementById('chat-close').addEventListener('click', () => {
-    document.getElementById('chat-panel').style.display = 'none';
-});
-
-function addChatMessage(author, text, isYou = false) {
-    const box = document.getElementById('chat-messages');
-    const msg = document.createElement('div');
-    msg.className = `chat-msg ${isYou ? 'chat-msg-you' : ''}`;
-    msg.innerHTML = `<b>${author}:</b> ${text}`;
-    box.appendChild(msg);
-    box.scrollTop = box.scrollHeight;
-}
-
-addChatMessage('DISPATCH', 'Units reporting criminal activity on roofs. Keep eyes open!');
-
-document.getElementById('chat-send').addEventListener('click', sendChatMessage);
-document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendChatMessage(); });
-
-function sendChatMessage() {
-    const input = document.getElementById('chat-input');
-    const val = input.value.trim();
-    if (!val) return;
-    addChatMessage('YOU', val, true);
-    input.value = '';
-
-    setTimeout(() => {
-        addChatMessage('DISPATCH', 'Copy that Spider-Hero. Stay safe out there!');
-    }, 1200);
-}
-
-/* =========================================================
-   ADVANCED PROCEDURAL ANIMATION CONTROLLER
-========================================================= */
-const poseTarget = {
-    torsoY: 1.35, torsoRotX: 0, torsoRotZ: 0,
-    headRotX: 0, headRotY: 0,
-    lShoulderX: 0, lShoulderY: 0, lShoulderZ: 0, lElbowX: -0.1,
-    rShoulderX: 0, rShoulderY: 0, rShoulderZ: 0, rElbowX: -0.1,
-    lHipX: 0, lHipZ: 0, lKneeX: 0.1,
-    rHipX: 0, rHipZ: 0, rKneeX: 0.1
-};
-
-const poseCurrent = { ...poseTarget };
-
-function resetTargetPose() {
-    poseTarget.torsoY = 1.35; poseTarget.torsoRotX = 0; poseTarget.torsoRotZ = 0;
-    poseTarget.headRotX = 0; poseTarget.headRotY = 0;
-    poseTarget.lShoulderX = 0; poseTarget.lShoulderY = 0; poseTarget.lShoulderZ = 0; poseTarget.lElbowX = -0.1;
-    poseTarget.rShoulderX = 0; poseTarget.rShoulderY = 0; poseTarget.rShoulderZ = 0; poseTarget.rElbowX = -0.1;
-    poseTarget.lHipX = 0; poseTarget.lHipZ = 0; poseTarget.lKneeX = 0.1;
-    poseTarget.rHipX = 0; poseTarget.rHipZ = 0; poseTarget.rKneeX = 0.1;
-}
-
-function updateCharacterAnimations(dt, horizSpeed, isRunning, isGrounded, isSwinging) {
-    resetTargetPose();
-
-    if (state.attackAnimTimer > 0) {
-        state.attackAnimTimer -= dt;
-        const p = state.attackPoseIndex;
-        if (p === 0) {
-            // Right Straight Punch
-            poseTarget.torsoRotX = -0.15; poseTarget.torsoRotZ = 0.2;
-            poseTarget.rShoulderX = -Math.PI / 1.7; poseTarget.rShoulderY = -0.4; poseTarget.rElbowX = -0.2;
-            poseTarget.lShoulderX = 0.4; poseTarget.lElbowX = -1.2;
-            poseTarget.rHipX = 0.3; poseTarget.lHipX = -0.4;
-        } else if (p === 1) {
-            // Left Upper Hook
-            poseTarget.torsoRotX = -0.1; poseTarget.torsoRotZ = -0.25;
-            poseTarget.lShoulderX = -Math.PI / 1.6; poseTarget.lShoulderY = 0.5; poseTarget.lElbowX = -1.1;
-            poseTarget.rShoulderX = 0.3; poseTarget.rElbowX = -0.8;
-            poseTarget.lHipX = 0.4; poseTarget.rHipX = -0.3;
-        } else {
-            // High Kick
-            poseTarget.torsoRotX = 0.2; poseTarget.torsoRotZ = 0.3;
-            poseTarget.rHipX = -Math.PI / 1.8; poseTarget.rKneeX = 0.2;
-            poseTarget.lHipX = 0.3; poseTarget.lKneeX = 0.4;
-            poseTarget.lShoulderX = 0.5; poseTarget.rShoulderX = -0.6;
-        }
-    } else if (isSwinging) {
-        // Dynamic Swing Pose
-        poseTarget.torsoRotX = -0.45;
-        poseTarget.rShoulderX = -Math.PI / 1.05; poseTarget.rElbowX = -0.3;
-        poseTarget.lShoulderX = -Math.PI / 1.05; poseTarget.lElbowX = -0.3;
-        poseTarget.lHipX = 0.8; poseTarget.lKneeX = 1.2;
-        poseTarget.rHipX = -0.2; poseTarget.rKneeX = 0.4;
-    } else if (!isGrounded) {
-        // Jump / Air Leap Pose
-        poseTarget.torsoY = 1.32;
-        poseTarget.torsoRotX = -0.25;
-        poseTarget.lShoulderX = 0.8; poseTarget.lElbowX = -0.8;
-        poseTarget.rShoulderX = -1.2; poseTarget.rElbowX = -0.4;
-        poseTarget.lHipX = -0.6; poseTarget.lKneeX = 0.9;
-        poseTarget.rHipX = 0.7; poseTarget.rKneeX = 1.1;
-    } else if (horizSpeed > 0.2) {
-        // Walk / Run Locomotion Cycle
-        const freq = isRunning ? 13.5 : 8.5;
-        state.walkAnim += dt * freq;
-        const cycle = state.walkAnim;
-
-        const legAmp = isRunning ? 1.05 : 0.65;
-        const armAmp = isRunning ? 1.15 : 0.7;
-
-        // Legs opposing swinging with double-knee flex on back-stride
-        const lHip = Math.sin(cycle) * legAmp;
-        const rHip = -Math.sin(cycle) * legAmp;
-        poseTarget.lHipX = lHip;
-        poseTarget.rHipX = rHip;
-
-        poseTarget.lKneeX = lHip < 0 ? Math.abs(lHip) * 1.1 + 0.15 : 0.1;
-        poseTarget.rKneeX = rHip < 0 ? Math.abs(rHip) * 1.1 + 0.15 : 0.1;
-
-        // Arms opposing legs
-        poseTarget.lShoulderX = -Math.sin(cycle) * armAmp;
-        poseTarget.rShoulderX = Math.sin(cycle) * armAmp;
-        poseTarget.lElbowX = -0.3 - Math.abs(Math.sin(cycle)) * 0.4;
-        poseTarget.rElbowX = -0.3 - Math.abs(Math.cos(cycle)) * 0.4;
-
-        // Torso lean and hip bounce
-        poseTarget.torsoY = 1.35 + Math.abs(Math.sin(cycle * 2)) * (isRunning ? 0.08 : 0.04);
-        poseTarget.torsoRotX = isRunning ? -0.22 : -0.06;
-        poseTarget.torsoRotZ = Math.sin(cycle) * (isRunning ? 0.08 : 0.04);
-    } else {
-        // Idle breathing cycle
-        state.walkAnim += dt * 2.2;
-        const breath = Math.sin(state.walkAnim);
-        poseTarget.torsoY = 1.35 + breath * 0.015;
-        poseTarget.lShoulderZ = 0.05 + breath * 0.02;
-        poseTarget.rShoulderZ = -0.05 - breath * 0.02;
-        poseTarget.lElbowX = -0.15;
-        poseTarget.rElbowX = -0.15;
-    }
-
-    // Smoothly blend current rig transforms to target pose (Lerp)
-    const lerpRate = dt * 18.0;
-    for (let key in poseTarget) {
-        poseCurrent[key] += (poseTarget[key] - poseCurrent[key]) * Math.min(lerpRate, 1.0);
-    }
-
-    // Apply interpolated values directly to Three.js rig joints
-    torso.position.y = poseCurrent.torsoY;
-    torso.rotation.x = poseCurrent.torsoRotX;
-    torso.rotation.z = poseCurrent.torsoRotZ;
-
-    leftArm.shoulder.rotation.set(poseCurrent.lShoulderX, poseCurrent.lShoulderY, poseCurrent.lShoulderZ);
-    leftArm.elbow.rotation.x = poseCurrent.lElbowX;
-
-    rightArm.shoulder.rotation.set(poseCurrent.rShoulderX, poseCurrent.rShoulderY, poseCurrent.rShoulderZ);
-    rightArm.elbow.rotation.x = poseCurrent.rElbowX;
-
-    leftLeg.hipJoint.rotation.set(poseCurrent.lHipX, 0, poseCurrent.lHipZ);
-    leftLeg.knee.rotation.x = poseCurrent.lKneeX;
-
-    rightLeg.hipJoint.rotation.set(poseCurrent.rHipX, 0, poseCurrent.rHipZ);
-    rightLeg.knee.rotation.x = poseCurrent.rKneeX;
-}
-
-/* =========================================================
-   PHYSICS & MOVEMENT LOOP
-========================================================= */
-function updatePhysics(dt) {
-    if (cutscene.active) {
-        updateCutscene(dt);
         return;
     }
 
-    if (state.attackCooldown > 0) state.attackCooldown -= dt;
+    const sorted=
+        [...enemies].sort(
+            (a,b)=>
+                player.position.distanceTo(
+                    a.mesh.position
+                )-
+                player.position.distanceTo(
+                    b.mesh.position
+                )
+        );
 
-    // Camera vectors
-    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch);
-    const camRotation = new THREE.Quaternion().copy(qYaw).multiply(qPitch);
+    list.innerHTML='';
 
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(qYaw);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(qYaw);
+    sorted.forEach(
+        (enemy,index)=>{
 
-    let moveX = 0, moveZ = 0;
-    if (keys['KeyW']) moveZ += 1;
-    if (keys['KeyS']) moveZ -= 1;
-    if (keys['KeyA']) moveX -= 1;
-    if (keys['KeyD']) moveX += 1;
+            const distance=
+                Math.round(
+                    player.position.distanceTo(
+                        enemy.mesh.position
+                    )
+                );
 
-    if (isTouchDevice) {
-        moveX += joyVector.x;
-        moveZ -= joyVector.y;
-    }
+            const hp=
+                Math.max(
+                    0,
+                    enemy.hp/
+                    enemy.maxHp*
+                    100
+                );
 
-    const moveDir = new THREE.Vector3()
-        .addScaledVector(forward, moveZ)
-        .addScaledVector(right, moveX);
+            const item=
+                document.createElement(
+                    'div'
+                );
 
-    if (moveDir.lengthSq() > 0) moveDir.normalize();
+            item.className=
+                'enemy-track';
 
-    const suit = SUITS[state.equippedSuit];
-    const isSprinting = state.isRunning || keys['ShiftLeft'];
-    const targetSpeed = isSprinting ? 18.0 * suit.speed : 10.5 * suit.speed;
+            item.innerHTML=`
+                <div class="enemy-track-name">
+                    <span>🔴 BANDIT ${index+1}</span>
+                    <span class="enemy-distance">
+                        ${distance}m
+                    </span>
+                </div>
 
-    // Web Swinging Mechanics
-    if (state.isSwinging) {
-        const toAnchor = player.position.clone().sub(state.swingAnchor);
-        const currentDist = toAnchor.length();
+                <div class="enemy-hp-bar">
+                    <div
+                        class="enemy-hp-fill"
+                        style="width:${hp}%"
+                    ></div>
+                </div>
 
-        if (currentDist > state.swingLength) {
-            toAnchor.normalize();
-            const dot = velocity.dot(toAnchor);
-            if (dot > 0) velocity.sub(toAnchor.multiplyScalar(dot));
-            player.position.copy(state.swingAnchor).add(toAnchor.multiplyScalar(state.swingLength));
+                <div style="margin-top:3px;color:#94a3b8">
+                    HP ${Math.round(enemy.hp)}/${enemy.maxHp}
+                </div>
+            `;
+
+            list.appendChild(item);
         }
+    );
+}
 
-        const swingForce = moveDir.clone().multiplyScalar(22.0 * dt);
-        velocity.add(swingForce);
-        velocity.y -= 14.0 * dt;
-    } else {
-        // Ground & Airborne Locomotion with Smooth Acceleration & Ground Friction
-        if (isGrounded) {
-            const accel = moveDir.lengthSq() > 0 ? 16.0 : 22.0; // Responsive acceleration / rapid stopping
-            velocity.x = THREE.MathUtils.lerp(velocity.x, moveDir.x * targetSpeed, dt * accel);
-            velocity.z = THREE.MathUtils.lerp(velocity.z, moveDir.z * targetSpeed, dt * accel);
-            velocity.y = -1.0;
-        } else {
-            velocity.x += moveDir.x * targetSpeed * 0.18 * dt;
-            velocity.z += moveDir.z * targetSpeed * 0.18 * dt;
-            velocity.y -= 26.0 * dt;
-        }
-    }
 
-    // Apply Position
-    player.position.addScaledVector(velocity, dt);
+/* =========================================================
+COMBAT
+========================================================= */
 
-    // Collision Detection & Wall Snapping
-    isGrounded = false;
-    if (player.position.y <= 0.0) {
-        player.position.y = 0.0;
-        velocity.y = 0;
-        isGrounded = true;
-    }
+function attack(){
 
-    buildings.forEach(b => {
-        const box = b.userData.box;
-        const radius = 0.5;
+    if(
+        state.attackCooldown>0 ||
+        cutscene.active ||
+        state.shopOpen
+    ) return;
 
-        if (
-            player.position.x + radius > box.min.x &&
-            player.position.x - radius < box.max.x &&
-            player.position.z + radius > box.min.z &&
-            player.position.z - radius < box.max.z
-        ) {
-            if (player.position.y < b.userData.height - 0.2) {
-                // Smooth slide pushout against building facades
-                const dx1 = Math.abs(player.position.x - box.min.x);
-                const dx2 = Math.abs(player.position.x - box.max.x);
-                const dz1 = Math.abs(player.position.z - box.min.z);
-                const dz2 = Math.abs(player.position.z - box.max.z);
-                const min = Math.min(dx1, dx2, dz1, dz2);
+    state.comboStep=
+        state.comboStep%3+1;
 
-                if (min === dx1) player.position.x = box.min.x - radius;
-                else if (min === dx2) player.position.x = box.max.x + radius;
-                else if (min === dz1) player.position.z = box.min.z - radius;
-                else if (min === dz2) player.position.z = box.max.z + radius;
+    state.comboWindow=.9;
+    state.attackAnimTimer=.65;
+    state.attackPoseIndex=
+        state.comboStep;
 
-                // Wall run / climb mechanics on contact
-                if (keys['KeyW'] || joyVector.y < -0.3) {
-                    velocity.y = 8.5;
-                    isGrounded = true;
-                }
-            } else if (player.position.y <= b.userData.height + 1.2) {
-                // Rooftop landing
-                player.position.y = b.userData.height;
-                velocity.y = 0;
-                isGrounded = true;
+    state.attackCooldown=.28;
+
+    document.getElementById(
+        'combo-row'
+    ).style.display='block';
+
+    document.getElementById(
+        'val-combo'
+    ).innerText=
+        'x'+state.comboStep;
+
+    const suit=
+        SUITS[state.equippedSuit];
+
+    const multiplier=
+        1+
+        (state.comboStep-1)*.35;
+
+    const range=
+        6.5+
+        (state.comboStep===3?1.5:0);
+
+    for(
+        let i=enemies.length-1;
+        i>=0;
+        i--
+    ){
+
+        const e=enemies[i];
+
+        const dist=
+            player.position.distanceTo(
+                e.mesh.position
+            );
+
+        if(dist<range){
+
+            const damage=
+                Math.round(
+                    suit.damage*
+                    multiplier
+                );
+
+            e.hp-=damage;
+            e.staggerTimer=.25;
+
+            flashEnemy(e);
+
+            const knock=
+                e.mesh.position
+                .clone()
+                .sub(player.position)
+                .normalize()
+                .multiplyScalar(
+                    state.comboStep===3?
+                    10:5
+                );
+
+            e.mesh.position.add(
+                knock
+            );
+
+            if(e.hp<=0){
+
+                const deathPos=
+                    e.mesh.position.clone();
+
+                scene.remove(e.mesh);
+
+                enemies.splice(i,1);
+
+                state.coins+=50;
+
+                questEnemyDefeated();
+
+                spawnDefeatEffect(
+                    deathPos
+                );
+
+                updateHud();
+
+                document.getElementById(
+                    'thug-count'
+                ).innerText=
+                    enemies.length;
             }
+        }
+    }
+
+    if(
+        enemies.length===0 &&
+        activeCrime
+    ){
+
+        activeCrime=false;
+
+        state.coins+=150;
+
+        updateHud();
+
+        document.getElementById(
+            'crime-alert'
+        ).style.display='none';
+
+        showToast(
+            '🏆 Crime Cleared! +150 Coins'
+        );
+
+        chatPush(
+            'Dispatch',
+            'Great work! The area is secure.'
+        );
+
+        setTimeout(
+            spawnCrime,
+            7000
+        );
+    }
+}
+
+function flashEnemy(enemy){
+
+    enemy.torsoM.material.emissive=
+        new THREE.Color(0xff0000);
+
+    enemy.torsoM.material.emissiveIntensity=
+        .8;
+
+    setTimeout(()=>{
+
+        if(enemy.torsoM.material)
+            enemy.torsoM.material.emissiveIntensity=0;
+
+    },120);
+}
+
+
+/* =========================================================
+DEFEAT EFFECT
+========================================================= */
+
+const defeatEffects=[];
+
+function spawnDefeatEffect(pos){
+
+    const mesh=
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .18,8,8
+            ),
+            new THREE.MeshBasicMaterial({
+                color:0xfacc15,
+                transparent:true
+            })
+        );
+
+    mesh.position.copy(pos);
+    mesh.position.y+=1;
+
+    scene.add(mesh);
+
+    defeatEffects.push({
+        mesh,
+        life:.6
+    });
+}
+
+function updateDefeatEffects(dt){
+
+    for(
+        let i=defeatEffects.length-1;
+        i>=0;
+        i--
+    ){
+
+        const fx=
+            defeatEffects[i];
+
+        fx.life-=dt;
+
+        fx.mesh.position.y+=
+            3*dt;
+
+        fx.mesh.scale.multiplyScalar(
+            1+dt*5
+        );
+
+        fx.mesh.material.opacity=
+            Math.max(
+                0,
+                fx.life/.6
+            );
+
+        if(fx.life<=0){
+
+            scene.remove(
+                fx.mesh
+            );
+
+            fx.mesh.geometry.dispose();
+            fx.mesh.material.dispose();
+
+            defeatEffects.splice(
+                i,
+                1
+            );
+        }
+    }
+}
+
+
+/* =========================================================
+SWINGING
+========================================================= */
+
+const aimRay=
+    new THREE.Raycaster();
+
+function getAimTarget(){
+
+    aimRay.setFromCamera(
+        new THREE.Vector2(0,0),
+        camera
+    );
+
+    const hits=
+        aimRay.intersectObjects(
+            buildings
+        );
+
+    return hits.length &&
+        hits[0].distance<150 ?
+        hits[0] :
+        null;
+}
+
+function findSwingAnchor(){
+
+    const hit=getAimTarget();
+
+    if(
+        hit &&
+        hit.point.y>
+        player.position.y+5
+    ){
+
+        return hit.point.clone();
+    }
+
+    const forward=
+        new THREE.Vector3(
+            0,0,-1
+        ).applyAxisAngle(
+            new THREE.Vector3(0,1,0),
+            camYaw
+        );
+
+    let best=null;
+    let bestScore=-Infinity;
+
+    buildings.forEach(b=>{
+
+        const to=
+            b.position.clone()
+            .sub(player.position);
+
+        const dist=to.length();
+
+        if(
+            dist<14 ||
+            dist>140
+        ) return;
+
+        if(
+            b.userData.height<
+            player.position.y+8
+        ) return;
+
+        const flat=
+            to.clone();
+
+        flat.y=0;
+        flat.normalize();
+
+        const alignment=
+            flat.dot(forward);
+
+        if(alignment<.4)
+            return;
+
+        const score=
+            alignment-
+            dist*.003;
+
+        if(score>bestScore){
+
+            bestScore=score;
+
+            best=
+                new THREE.Vector3(
+                    b.position.x,
+                    b.userData.height,
+                    b.position.z
+                );
         }
     });
 
-    // Smooth Player Mesh Turning (Smooth Slerp/Angle Lerp)
-    const horizVelocity = new THREE.Vector3(velocity.x, 0, velocity.z);
-    const horizSpeed = horizVelocity.length();
-
-    if (horizSpeed > 0.4) {
-        const targetAngle = Math.atan2(horizVelocity.x, horizVelocity.z);
-        const turnSpeed = isGrounded ? 18.0 : 8.0;
-        player.rotation.y = THREE.MathUtils.lerpAngle(player.rotation.y, targetAngle, dt * turnSpeed);
-    }
-
-    // Web rope positioning
-    if (state.isSwinging) {
-        const handPos = player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
-        updateWebRope(handPos, state.swingAnchor);
-    }
-
-    // Camera follow tracking
-    const camOffset = new THREE.Vector3(0, 2.6, 6.5).applyQuaternion(camRotation);
-    camera.position.copy(player.position).add(camOffset);
-    camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 1.6, 0)));
-
-    // Target crosshairs
-    const target = getSwingTarget();
-    const crosshair = document.getElementById('crosshair');
-    crosshair.classList.toggle('valid-target', target !== null);
-
-    updateTargetRing();
-
-    // Procedural animation update call
-    updateCharacterAnimations(dt, horizSpeed, isSprinting, isGrounded, state.isSwinging);
+    return best;
 }
+
+function startSwing(){
+
+    if(
+        state.isSwinging ||
+        state.isClimbing ||
+        cutscene.active ||
+        state.shopOpen
+    ) return;
+
+    const anchor=
+        findSwingAnchor();
+
+    if(!anchor){
+
+        showToast(
+            'No building in range!'
+        );
+
+        return;
+    }
+
+    state.isSwinging=true;
+
+    state.swingAnchor.copy(
+        anchor
+    );
+
+    state.swingLength=
+        THREE.MathUtils.clamp(
+            player.position.distanceTo(
+                anchor
+            ),
+            10,
+            75
+        );
+
+    webMesh.visible=true;
+    anchorMarker.visible=true;
+
+    anchorMarker.position.copy(
+        anchor
+    );
+}
+
+function releaseSwing(){
+
+    if(!state.isSwinging)
+        return;
+
+    state.isSwinging=false;
+
+    webMesh.visible=false;
+    anchorMarker.visible=false;
+
+    if(keys.Space){
+
+        const forward=
+            new THREE.Vector3(
+                0,.35,-1
+            ).applyAxisAngle(
+                new THREE.Vector3(0,1,0),
+                camYaw
+            );
+
+        velocity.add(
+            forward.multiplyScalar(12)
+        );
+    }
+}
+
 
 /* =========================================================
-   GAME LOOP
+COLLISION
 ========================================================= */
-let lastTime = performance.now();
 
-function animate(time) {
-    requestAnimationFrame(animate);
-    const dt = Math.min((time - lastTime) / 1000, 0.08);
-    lastTime = time;
+const velocity=
+    new THREE.Vector3();
 
-    updatePhysics(dt);
-    renderer.render(scene, camera);
+let isGrounded=false;
+
+function resolveBuildingCollisions(){
+
+    isGrounded=false;
+    state.isClimbing=false;
+
+    const radius=.45;
+    const height=2;
+
+    if(player.position.y<=0){
+
+        player.position.y=0;
+        velocity.y=0;
+        isGrounded=true;
+    }
+
+    const boxPlayer=
+        new THREE.Box3();
+
+    for(const b of buildings){
+
+        const dx=
+            player.position.x-
+            b.position.x;
+
+        const dz=
+            player.position.z-
+            b.position.z;
+
+        if(
+            dx*dx+dz*dz>
+            b.userData.cullRadiusSq
+        ) continue;
+
+        boxPlayer.min.set(
+            player.position.x-radius,
+            player.position.y,
+            player.position.z-radius
+        );
+
+        boxPlayer.max.set(
+            player.position.x+radius,
+            player.position.y+height,
+            player.position.z+radius
+        );
+
+        const box=b.userData.box;
+
+        if(box.intersectsBox(boxPlayer)){
+
+            if(
+                player.position.y>=
+                box.max.y-1.2 &&
+                velocity.y<=0
+            ){
+
+                player.position.y=
+                    box.max.y;
+
+                velocity.y=0;
+
+                isGrounded=true;
+
+            }else{
+
+                if(
+                    keys.Space ||
+                    getMovementInput().lengthSq()>.05
+                ){
+
+                    state.isClimbing=true;
+
+                    velocity.y=
+                        14*
+                        SUITS[
+                            state.equippedSuit
+                        ].speed;
+                }
+            }
+        }
+    }
+
+    player.position.x=
+        THREE.MathUtils.clamp(
+            player.position.x,
+            -mapHalfSize,
+            mapHalfSize
+        );
+
+    player.position.z=
+        THREE.MathUtils.clamp(
+            player.position.z,
+            -mapHalfSize,
+            mapHalfSize
+        );
 }
 
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
 
-updateQuestHUD();
-requestAnimationFrame(animate);
+/* =========================================================
+INPUT
+========================================================= */
 
-setTimeout(() => {
-    if (!state.introCutsceneDone) {
-        state.introCutsceneDone = true;
-        triggerIntroCutscene();
+const keys={};
+
+let camPitch=.05;
+let camYaw=0;
+
+let isChatFocused=false;
+
+function inputBlocked(){
+
+    return(
+        cutscene.active ||
+        state.shopOpen ||
+        isChatFocused
+    );
+}
+
+window.addEventListener(
+    'keydown',
+    e=>{
+
+        if(isChatFocused)
+            return;
+
+        keys[e.code]=true;
+
+        if(inputBlocked())
+            return;
+
+        if(e.code==='KeyE')
+            startSwing();
+
+        if(e.code==='KeyF')
+            attack();
+
+        if(e.code==='KeyU')
+            toggleShop();
+
+        if(
+            e.code==='ShiftLeft' ||
+            e.code==='ShiftRight'
+        ){
+            state.isRunning=true;
+        }
     }
-}, 600);
+);
+
+window.addEventListener(
+    'keyup',
+    e=>{
+
+        keys[e.code]=false;
+
+        if(e.code==='KeyE')
+            releaseSwing();
+
+        if(
+            e.code==='ShiftLeft' ||
+            e.code==='ShiftRight'
+        ){
+            state.isRunning=false;
+        }
+    }
+);
+
+window.addEventListener(
+    'mousedown',
+    e=>{
+
+        if(inputBlocked())
+            return;
+
+        if(
+            document.pointerLockElement!==
+            document.body &&
+            !isTouchDevice
+        ){
+
+            document.body.requestPointerLock();
+            return;
+        }
+
+        if(e.button===0)
+            attack();
+
+        if(e.button===2)
+            startSwing();
+    }
+);
+
+window.addEventListener(
+    'mouseup',
+    e=>{
+        if(e.button===2)
+            releaseSwing();
+    }
+);
+
+window.addEventListener(
+    'contextmenu',
+    e=>e.preventDefault()
+);
+
+window.addEventListener(
+    'mousemove',
+    e=>{
+
+        if(
+            document.pointerLockElement===
+            document.body &&
+            !cutscene.active
+        ){
+
+            camYaw-=
+                e.movementX*.0028;
+
+            camPitch-=
+                e.movementY*.0024;
+
+            camPitch=
+                THREE.MathUtils.clamp(
+                    camPitch,
+                    -.65,
+                    .85
+                );
+        }
+    }
+);
+
+
+/* =========================================================
+MOBILE
+========================================================= */
+
+const touchMoveVec={
+    x:0,
+    z:0
+};
+
+let moveTouchId=null;
+let lookTouchId=null;
+
+let lastLookX=0;
+let lastLookY=0;
+
+const joystickBase=
+    document.getElementById(
+        'joystick-base'
+    );
+
+const joystickStick=
+    document.getElementById(
+        'joystick-stick'
+    );
+
+const moveZone=
+    document.getElementById(
+        'move-zone'
+    );
+
+const lookZone=
+    document.getElementById(
+        'look-zone'
+    );
+
+const JOY_RADIUS=55;
+
+function moveStart(t){
+
+    if(
+        moveTouchId!==null ||
+        inputBlocked()
+    ) return;
+
+    moveTouchId=t.identifier;
+
+    joystickBase.style.display='block';
+
+    joystickBase.style.left=
+        t.clientX+'px';
+
+    joystickBase.style.top=
+        t.clientY+'px';
+
+    joystickBase.dataset.x=
+        t.clientX;
+
+    joystickBase.dataset.y=
+        t.clientY;
+}
+
+function moveMove(t){
+
+    const ox=
+        parseFloat(
+            joystickBase.dataset.x
+        );
+
+    const oy=
+        parseFloat(
+            joystickBase.dataset.y
+        );
+
+    let dx=
+        t.clientX-ox;
+
+    let dy=
+        t.clientY-oy;
+
+    const dist=
+        Math.min(
+            Math.hypot(dx,dy),
+            JOY_RADIUS
+        );
+
+    const ang=
+        Math.atan2(dy,dx);
+
+    const sx=
+        Math.cos(ang)*dist;
+
+    const sy=
+        Math.sin(ang)*dist;
+
+    joystickStick.style.left=
+        55+sx+'px';
+
+    joystickStick.style.top=
+        55+sy+'px';
+
+    touchMoveVec.x=
+        sx/JOY_RADIUS;
+
+    touchMoveVec.z=
+        sy/JOY_RADIUS;
+}
+
+function moveEnd(){
+
+    moveTouchId=null;
+
+    joystickBase.style.display='none';
+
+    touchMoveVec.x=0;
+    touchMoveVec.z=0;
+}
+
+moveZone.addEventListener(
+    'touchstart',
+    e=>{
+        for(const t of e.changedTouches)
+            moveStart(t);
+    },
+    {passive:true}
+);
+
+moveZone.addEventListener(
+    'touchmove',
+    e=>{
+        for(const t of e.changedTouches)
+            if(t.identifier===moveTouchId)
+                moveMove(t);
+    },
+    {passive:true}
+);
+
+moveZone.addEventListener(
+    'touchend',
+    e=>{
+        for(const t of e.changedTouches)
+            if(t.identifier===moveTouchId)
+                moveEnd();
+    },
+    {passive:true}
+);
+
+lookZone.addEventListener(
+    'touchstart',
+    e=>{
+
+        if(
+            lookTouchId!==null ||
+            inputBlocked()
+        ) return;
+
+        const t=
+            e.changedTouches[0];
+
+        lookTouchId=t.identifier;
+
+        lastLookX=t.clientX;
+        lastLookY=t.clientY;
+    },
+    {passive:true}
+);
+
+lookZone.addEventListener(
+    'touchmove',
+    e=>{
+
+        for(const t of e.changedTouches){
+
+            if(
+                t.identifier!==lookTouchId
+            ) continue;
+
+            const dx=
+                t.clientX-lastLookX;
+
+            const dy=
+                t.clientY-lastLookY;
+
+            camYaw-=dx*.0042;
+            camPitch-=dy*.0036;
+
+            camPitch=
+                THREE.MathUtils.clamp(
+                    camPitch,
+                    -.65,
+                    .85
+                );
+
+            lastLookX=t.clientX;
+            lastLookY=t.clientY;
+        }
+    },
+    {passive:true}
+);
+
+lookZone.addEventListener(
+    'touchend',
+    e=>{
+        for(const t of e.changedTouches)
+            if(t.identifier===lookTouchId)
+                lookTouchId=null;
+    },
+    {passive:true}
+);
+
+function bindTouchButton(
+    id,
+    start,
+    end
+){
+
+    const el=
+        document.getElementById(id);
+
+    el.addEventListener(
+        'touchstart',
+        e=>{
+            e.preventDefault();
+
+            if(!inputBlocked())
+                start();
+        },
+        {passive:false}
+    );
+
+    if(end){
+
+        el.addEventListener(
+            'touchend',
+            e=>{
+                e.preventDefault();
+                end();
+            },
+            {passive:false}
+        );
+    }
+}
+
+bindTouchButton(
+    'btn-attack',
+    attack
+);
+
+bindTouchButton(
+    'btn-swing',
+    startSwing,
+    releaseSwing
+);
+
+bindTouchButton(
+    'btn-jump',
+    ()=>{
+        keys.Space=true;
+    },
+    ()=>{
+        keys.Space=false;
+    }
+);
+
+bindTouchButton(
+    'btn-run',
+    ()=>{
+        state.isRunning=
+            !state.isRunning;
+
+        document.getElementById(
+            'btn-run'
+        ).classList.toggle(
+            'active',
+            state.isRunning
+        );
+    }
+);
+
+
+/* =========================================================
+MOVEMENT
+========================================================= */
+
+function getMovementInput(){
+
+    const dir=
+        new THREE.Vector3();
+
+    if(inputBlocked())
+        return dir;
+
+    if(isTouchDevice){
+
+        dir.x=
+            touchMoveVec.x;
+
+        dir.z=
+            touchMoveVec.z;
+
+    }else{
+
+        if(
+            keys.KeyW ||
+            keys.ArrowUp
+        ) dir.z-=1;
+
+        if(
+            keys.KeyS ||
+            keys.ArrowDown
+        ) dir.z+=1;
+
+        if(
+            keys.KeyA ||
+            keys.ArrowLeft
+        ) dir.x-=1;
+
+        if(
+            keys.KeyD ||
+            keys.ArrowRight
+        ) dir.x+=1;
+    }
+
+    if(dir.lengthSq()>1)
+        dir.normalize();
+
+    return dir;
+}
+
+
+/* =========================================================
+SMOOTH ANIMATION
+========================================================= */
+
+let heroAnimTime=0;
+
+function updateHeroAnimation(
+    dt,
+    worldInput
+){
+
+    heroAnimTime+=dt;
+
+    const moving=
+        worldInput.lengthSq()>.01;
+
+    /* idle breathing */
+
+    const breathe=
+        Math.sin(
+            heroAnimTime*2.2
+        )*.018;
+
+    torso.scale.y=
+        THREE.MathUtils.lerp(
+            torso.scale.y,
+            1+breathe,
+            8*dt
+        );
+
+    /* walking */
+
+    if(
+        moving &&
+        isGrounded &&
+        !state.isSwinging &&
+        state.attackAnimTimer<=0
+    ){
+
+        state.walkAnim+=
+            dt*
+            (state.isRunning?15:10);
+
+        const amount=
+            state.isRunning?
+            .95:.65;
+
+        const legWave=
+            Math.sin(
+                state.walkAnim
+            )*amount;
+
+        const armWave=
+            Math.sin(
+                state.walkAnim
+            )*amount*.65;
+
+        leftLegPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                leftLegPivot.rotation.x,
+                legWave,
+                12*dt
+            );
+
+        rightLegPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                rightLegPivot.rotation.x,
+                -legWave,
+                12*dt
+            );
+
+        leftArmPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                leftArmPivot.rotation.x,
+                -armWave,
+                12*dt
+            );
+
+        rightArmPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                rightArmPivot.rotation.x,
+                armWave,
+                12*dt
+            );
+    }
+
+    /* jumping */
+
+    if(
+        !isGrounded &&
+        !state.isSwinging
+    ){
+
+        leftArmPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                leftArmPivot.rotation.x,
+                -.7,
+                7*dt
+            );
+
+        rightArmPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                rightArmPivot.rotation.x,
+                -.7,
+                7*dt
+            );
+
+        leftLegPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                leftLegPivot.rotation.x,
+                -.35,
+                7*dt
+            );
+
+        rightLegPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                rightLegPivot.rotation.x,
+                .35,
+                7*dt
+            );
+    }
+
+    /* swinging */
+
+    if(state.isSwinging){
+
+        leftArmPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                leftArmPivot.rotation.x,
+                -2.4,
+                10*dt
+            );
+
+        rightArmPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                rightArmPivot.rotation.x,
+                -2.4,
+                10*dt
+            );
+
+        leftLegPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                leftLegPivot.rotation.x,
+                .4,
+                7*dt
+            );
+
+        rightLegPivot.rotation.x=
+            THREE.MathUtils.lerp(
+                rightLegPivot.rotation.x,
+                -.4,
+                7*dt
+            );
+    }
+
+    /* attack */
+
+    if(state.attackAnimTimer>0){
+
+        state.attackAnimTimer-=dt;
+
+        const p=
+            Math.sin(
+                (1-
+                state.attackAnimTimer/.65)*
+                Math.PI
+            );
+
+        if(
+            state.attackPoseIndex===1
+        ){
+
+            rightArmPivot.rotation.x=
+                -2.1*p;
+
+        }else if(
+            state.attackPoseIndex===2
+        ){
+
+            leftArmPivot.rotation.x=
+                -2.1*p;
+
+        }else{
+
+            rightArmPivot.rotation.x=
+                -1.2*p;
+
+            rightLegPivot.rotation.x=
+                -.9*p;
+        }
+    }
+}
+
+
+/* =========================================================
+SHOP
+========================================================= */
+
+function toggleShop(){
+
+    if(cutscene.active)
+        return;
+
+    state.shopOpen=
+        !state.shopOpen;
+
+    document.getElementById(
+        'shop-modal'
+    ).style.display=
+        state.shopOpen?
+        'block':
+        'none';
+
+    if(state.shopOpen)
+        renderShop();
+}
+
+function renderShop(){
+
+    const list=
+        document.getElementById(
+            'suits-list'
+        );
+
+    list.innerHTML='';
+
+    Object.keys(SUITS).forEach(k=>{
+
+        const s=SUITS[k];
+
+        const row=
+            document.createElement(
+                'div'
+            );
+
+        row.className='suit-item';
+
+        let button='';
+
+        if(
+            state.equippedSuit===k
+        ){
+
+            button=
+                `<button class="suit-btn equipped">
+                    Equipped
+                </button>`;
+
+        }else if(s.owned){
+
+            button=
+                `<button class="suit-btn"
+                    onclick="equipSuit('${k}')">
+                    Equip
+                </button>`;
+
+        }else{
+
+            button=
+                `<button class="suit-btn"
+                    onclick="buySuit('${k}')">
+                    Unlock ${s.cost} 🪙
+                </button>`;
+        }
+
+        row.innerHTML=`
+            <div>
+                <b>${s.name}</b><br>
+                <small style="color:#94a3b8">
+                    Speed +${Math.round(
+                        (s.speed-1)*100
+                    )}% |
+                    DMG ${s.damage}
+                </small>
+            </div>
+            ${button}
+        `;
+
+        list.appendChild(row);
+    });
+}
+
+window.buySuit=function(k){
+
+    const s=SUITS[k];
+
+    if(state.coins>=s.cost){
+
+        state.coins-=s.cost;
+        s.owned=true;
+
+        equipSuit(k);
+
+        showToast(
+            `🕷️ ${s.name} unlocked!`
+        );
+
+        chatPush(
+            'Dispatch',
+            `${s.name} unlocked. Nice upgrade.`
+        );
+
+    }else{
+
+        showToast(
+            'Not enough coins!'
+        );
+    }
+};
+
+window.equipSuit=function(k){
+
+    state.equippedSuit=k;
+
+    applySuitVisuals(k);
+
+    updateHud();
+    renderShop();
+
+    playCutscene([
+
+        {
+            pos:camera.position.clone(),
+            look:player.position.clone().add(
+                new THREE.Vector3(0,1.5,0)
+            ),
+            duration:.1
+        },
+
+        {
+            pos:player.position.clone().add(
+                new THREE.Vector3(5,3,7)
+            ),
+            look:player.position.clone().add(
+                new THREE.Vector3(0,1.2,0)
+            ),
+            duration:1.2,
+            text:`🕷️ ${SUITS[k].name}`
+        },
+
+        {
+            pos:player.position.clone().add(
+                new THREE.Vector3(-4,2.5,6)
+            ),
+            look:player.position.clone().add(
+                new THREE.Vector3(0,1.4,0)
+            ),
+            duration:1.2,
+            text:'Suit upgrade complete.'
+        }
+
+    ]);
+}
+
+
+/* =========================================================
+HUD
+========================================================= */
+
+function updateHud(){
+
+    document.getElementById(
+        'val-hp'
+    ).innerText=
+        `${state.hp} / ${state.maxHp}`;
+
+    document.getElementById(
+        'val-coins'
+    ).innerText=
+        state.coins;
+
+    document.getElementById(
+        'val-suit'
+    ).innerText=
+        SUITS[
+            state.equippedSuit
+        ].name;
+}
+
+
+/* =========================================================
+QUEST COMPLETE
+========================================================= */
+
+function completeQuest(){
+
+    questState.completed=true;
+
+    const q=currentQuest();
+
+    state.coins+=q.reward;
+
+    updateHud();
+
+    document.getElementById(
+        'quest-popup-text'
+    ).innerText=
+        `${q.title} complete! +${q.reward} coins`;
+
+    const popup=
+        document.getElementById(
+            'quest-popup'
+        );
+
+    popup.classList.add('show');
+
+    playCutscene([
+
+        {
+            pos:camera.position.clone(),
+            look:player.position.clone().add(
+                new THREE.Vector3(0,1.5,0)
+            ),
+            duration:.1
+        },
+
+        {
+            pos:player.position.clone().add(
+                new THREE.Vector3(6,4,8)
+            ),
+            look:player.position.clone().add(
+                new THREE.Vector3(0,1.3,0)
+            ),
+            duration:1.5,
+            text:'⭐ MISSION COMPLETE'
+        },
+
+        {
+            pos:player.position.clone().add(
+                new THREE.Vector3(-5,3,7)
+            ),
+            look:player.position.clone().add(
+                new THREE.Vector3(0,1.4,0)
+            ),
+            duration:1.4,
+            text:`+${q.reward} coins`
+        }
+
+    ],()=>{
+
+        popup.classList.remove(
+            'show'
+        );
+
+        questState.index++;
+
+        if(
+            questState.index>=
+            quests.length
+        ){
+            questState.index=0;
+        }
+
+        questState.progress=0;
+        questState.completed=false;
+        questState.swingTime=0;
+        questState.distance=0;
+
+        updateQuestUI();
+
+        chatPush(
+            'Dispatch',
+            `📜 New quest: ${currentQuest().title}`
+        );
+
+        showToast(
+            '📜 New Quest Available!'
+        );
+    });
+}
+
+
+/* =========================================================
+CHAT
+========================================================= */
+
+const chatMessages=
+    document.getElementById(
+        'chat-messages'
+    );
+
+function chatPush(
+    sender,
+    message
+){
+
+    const div=
+        document.createElement(
+            'div'
+        );
+
+    div.className=
+        'chat-msg';
+
+    div.innerHTML=
+        `<b>${sender}:</b> ${message}`;
+
+    chatMessages.appendChild(
+        div
+    );
+
+    chatMessages.scrollTop=
+        chatMessages.scrollHeight;
+}
+
+const responses=[
+
+    {
+        keys:[
+            'help',
+            'swing'
+        ],
+        reply:
+            'Aim at a tall building and hold Swing to start web-swinging.'
+    },
+
+    {
+        keys:[
+            'coin',
+            'money'
+        ],
+        reply:
+            ()=>`You have ${state.coins} coins.`
+    },
+
+    {
+        keys:[
+            'quest',
+            'mission'
+        ],
+        reply:
+            ()=>`Current mission: ${currentQuest().title}.`
+    },
+
+    {
+        keys:[
+            'enemy',
+            'bandit'
+        ],
+        reply:
+            ()=>`${enemies.length} enemies currently detected.`
+    },
+
+    {
+        keys:[
+            'suit'
+        ],
+        reply:
+            ()=>`You're wearing ${SUITS[state.equippedSuit].name}.`
+    },
+
+    {
+        keys:[
+            'hi',
+            'hello',
+            'hey'
+        ],
+        reply:
+            'Dispatch online. Stay sharp!'
+    }
+];
+
+function sendChat(){
+
+    const input=
+        document.getElementById(
+            'chat-input'
+        );
+
+    const msg=
+        input.value.trim();
+
+    if(!msg) return;
+
+    chatPush(
+        'You',
+        msg
+    );
+
+    const lower=
+        msg.toLowerCase();
+
+    const found=
+        responses.find(
+            r=>
+                r.keys.some(
+                    k=>lower.includes(k)
+                )
+        );
+
+    const reply=
+        found?
+        typeof found.reply==='function'?
+        found.reply():
+        found.reply:
+        'Copy that. Stay sharp out there.';
+
+    setTimeout(
+        ()=>chatPush(
+            'Dispatch',
+            reply
+        ),
+        400
+    );
+
+    input.value='';
+}
+
+document.getElementById(
+    'chat-send'
+).onclick=sendChat;
+
+const chatInput=
+    document.getElementById(
+        'chat-input'
+    );
+
+chatInput.addEventListener(
+    'focus',
+    ()=>{
+        isChatFocused=true;
+    }
+);
+
+chatInput.addEventListener(
+    'blur',
+    ()=>{
+        isChatFocused=false;
+    }
+);
+
+chatInput.addEventListener(
+    'keydown',
+    e=>{
+        e.stopPropagation();
+
+        if(e.code==='Enter')
+            sendChat();
+    }
+);
+
+function toggleChat(){
+
+    const panel=
+        document.getElementById(
+            'chat-panel'
+        );
+
+    panel.style.display=
+        panel.style.display==='flex'?
+        'none':
+        'flex';
+}
+
+document.getElementById(
+    'btn-chat-toggle'
+).onclick=toggleChat;
+
+document.getElementById(
+    'chat-close'
+).onclick=toggleChat;
+
+document.getElementById(
+    'btn-shop'
+).onclick=toggleShop;
+
+
+/* =========================================================
+TOAST
+========================================================= */
+
+function showToast(text){
+
+    const el=
+        document.getElementById(
+            'action-msg'
+        );
+
+    el.innerText=text;
+    el.style.display='block';
+
+    clearTimeout(
+        showToast.timer
+    );
+
+    showToast.timer=
+        setTimeout(
+            ()=>{
+                el.style.display='none';
+            },
+            2400
+        );
+}
+
+
+/* =========================================================
+MAIN LOOP
+========================================================= */
+
+const clock=
+    new THREE.Clock();
+
+function animate(){
+
+    requestAnimationFrame(
+        animate
+    );
+
+    const dt=
+        Math.min(
+            clock.getDelta(),
+            .1
+        );
+
+    if(cutscene.active){
+
+        updateCutscene(dt);
+
+        renderer.render(
+            scene,
+            camera
+        );
+
+        return;
+    }
+
+    const suit=
+        SUITS[
+            state.equippedSuit
+        ];
+
+    if(state.attackCooldown>0)
+        state.attackCooldown-=dt;
+
+    if(state.comboWindow>0){
+
+        state.comboWindow-=dt;
+
+        if(
+            state.comboWindow<=0
+        ){
+
+            state.comboStep=0;
+
+            document.getElementById(
+                'combo-row'
+            ).style.display='none';
+        }
+    }
+
+    const input=
+        getMovementInput();
+
+    const worldInput=
+        input.clone().applyAxisAngle(
+            new THREE.Vector3(0,1,0),
+            camYaw
+        );
+
+    updateHeroAnimation(
+        dt,
+        worldInput
+    );
+
+    if(state.isSwinging){
+
+        const toAnchor=
+            state.swingAnchor
+            .clone()
+            .sub(player.position);
+
+        const ropeDir=
+            toAnchor.clone().normalize();
+
+        velocity.y-=26*dt;
+
+        const tangent=
+            worldInput.clone()
+            .sub(
+                ropeDir.clone()
+                .multiplyScalar(
+                    worldInput.dot(ropeDir)
+                )
+            );
+
+        velocity.addScaledVector(
+            tangent,
+            20*dt
+        );
+
+        const radial=
+            velocity.dot(ropeDir);
+
+        velocity.addScaledVector(
+            ropeDir,
+            -radial
+        );
+
+        player.position.addScaledVector(
+            velocity,
+            dt
+        );
+
+        const newToAnchor=
+            player.position
+            .clone()
+            .sub(state.swingAnchor);
+
+        newToAnchor.setLength(
+            state.swingLength
+        );
+
+        player.position.copy(
+            state.swingAnchor
+            .clone()
+            .add(newToAnchor)
+        );
+
+        if(keys.Space)
+            releaseSwing();
+
+        const hand=
+            player.position.clone().add(
+                new THREE.Vector3(
+                    .3,1.5,0
+                )
+            );
+
+        updateWebRope(
+            hand,
+            state.swingAnchor
+        );
+
+        questState.swingTime+=dt;
+
+        if(
+            currentQuest().type==='swing'
+        ){
+
+            questState.progress=
+                Math.floor(
+                    questState.swingTime
+                );
+
+            updateQuestUI();
+        }
+
+    }else{
+
+        const speed=
+            22*
+            suit.speed*
+            (state.isRunning &&
+            isGrounded?1.6:1);
+
+        velocity.x=
+            THREE.MathUtils.lerp(
+                velocity.x,
+                worldInput.x*speed,
+                10*dt
+            );
+
+        velocity.z=
+            THREE.MathUtils.lerp(
+                velocity.z,
+                worldInput.z*speed,
+                10*dt
+            );
+
+        velocity.y-=34*dt;
+
+        if(
+            isGrounded &&
+            keys.Space
+        ){
+
+            velocity.y=15;
+            isGrounded=false;
+        }
+
+        if(worldInput.lengthSq()>.01){
+
+            const heading=
+                Math.atan2(
+                    worldInput.x,
+                    worldInput.z
+                );
+
+            player.rotation.y=
+                THREE.MathUtils.lerp(
+                    player.rotation.y,
+                    heading,
+                    12*dt
+                );
+        }
+
+        const maxSpeed=55;
+
+        const horizontal=
+            Math.hypot(
+                velocity.x,
+                velocity.z
+            );
+
+        if(horizontal>maxSpeed){
+
+            const scale=
+                maxSpeed/horizontal;
+
+            velocity.x*=scale;
+            velocity.z*=scale;
+        }
+
+        player.position.addScaledVector(
+            velocity,
+            dt
+        );
+    }
+
+    /* distance quest */
+
+    const movementDistance=
+        player.position.distanceTo(
+            state.lastPosition
+        );
+
+    if(
+        movementDistance<5 &&
+        currentQuest().type==='distance'
+    ){
+
+        questState.distance+=
+            movementDistance;
+
+        questState.progress=
+            Math.floor(
+                questState.distance
+            );
+
+        updateQuestUI();
+    }
+
+    state.lastPosition.copy(
+        player.position
+    );
+
+    resolveBuildingCollisions();
+
+    /* enemy AI */
+
+    enemies.forEach(e=>{
+
+        e.anim+=dt;
+
+        if(e.staggerTimer>0){
+
+            e.staggerTimer-=dt;
+            return;
+        }
+
+        const d=
+            e.mesh.position.distanceTo(
+                player.position
+            );
+
+        if(
+            d<45 &&
+            d>1.6
+        ){
+
+            const dir=
+                player.position.clone()
+                .sub(e.mesh.position)
+                .normalize();
+
+            dir.y=0;
+
+            e.mesh.position.add(
+                dir.multiplyScalar(
+                    4.5*dt
+                )
+            );
+
+            e.mesh.lookAt(
+                player.position.x,
+                e.mesh.position.y,
+                player.position.z
+            );
+
+            /* enemy walking animation */
+
+            e.lArmPivot.rotation.x=
+                Math.sin(e.anim*9)*.5;
+
+            e.rArmPivot.rotation.x=
+                -Math.sin(e.anim*9)*.5;
+        }
+    });
+
+    /* enemy tracker */
+
+    updateEnemyTracker();
+
+    /* camera */
+
+    const cameraOffset=
+        new THREE.Vector3(
+            .5,
+            2,
+            5.5
+        );
+
+    cameraOffset.applyAxisAngle(
+        new THREE.Vector3(1,0,0),
+        camPitch
+    );
+
+    cameraOffset.applyAxisAngle(
+        new THREE.Vector3(0,1,0),
+        camYaw
+    );
+
+    camera.position.lerp(
+        player.position
+        .clone()
+        .add(cameraOffset),
+        .18
+    );
+
+    camera.lookAt(
+        player.position.clone().add(
+            new THREE.Vector3(
+                0,1.4,0
+            )
+        )
+    );
+
+    /* target indicator */
+
+    const hit=getAimTarget();
+
+    const crosshair=
+        document.getElementById(
+            'crosshair'
+        );
+
+    const ring=
+        document.getElementById(
+            'target-ring'
+        );
+
+    if(hit && !isTouchDevice){
+
+        crosshair.className=
+            findSwingAnchor()?
+            'valid-target':
+            '';
+
+        ring.style.display='block';
+
+        const pos=
+            hit.point.clone()
+            .project(camera);
+
+        ring.style.left=
+            (pos.x*.5+.5)*
+            innerWidth+'px';
+
+        ring.style.top=
+            (-pos.y*.5+.5)*
+            innerHeight+'px';
+
+    }else{
+
+        crosshair.className='';
+        ring.style.display='none';
+    }
+
+    /* combat indicator */
+
+    const near=
+        enemies.some(
+            e=>
+                player.position.distanceTo(
+                    e.mesh.position
+                )<7
+        );
+
+    document.getElementById(
+        'combat-indicator'
+    ).style.display=
+        near?'block':'none';
+
+    updateDefeatEffects(dt);
+
+    renderer.render(
+        scene,
+        camera
+    );
+}
+
+
+/* =========================================================
+INTRO
+========================================================= */
+
+function startIntroCutscene(){
+
+    const a=
+        new THREE.Vector3(
+            0,170,170
+        );
+
+    const b=
+        new THREE.Vector3(
+            70,95,55
+        );
+
+    const c=
+        new THREE.Vector3(
+            10,22,20
+        );
+
+    camera.position.copy(a);
+
+    playCutscene([
+
+        {
+            pos:a,
+            look:new THREE.Vector3(
+                0,20,0
+            ),
+            duration:2.7,
+            text:'This city never sleeps...'
+        },
+
+        {
+            pos:b,
+            look:new THREE.Vector3(
+                0,10,0
+            ),
+            duration:2.5,
+            text:'...and neither does crime.'
+        },
+
+        {
+            pos:c,
+            look:player.position.clone().add(
+                new THREE.Vector3(0,2,0)
+            ),
+            duration:2.2,
+            text:'Suit up. The city needs you.'
+        }
+
+    ],()=>{
+
+        chatPush(
+            'Dispatch',
+            'Welcome, hero. Your first mission is waiting!'
+        );
+    });
+}
+
+
+/* =========================================================
+RESIZE
+========================================================= */
+
+window.addEventListener(
+    'resize',
+    ()=>{
+        camera.aspect=
+            innerWidth/innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            innerWidth,
+            innerHeight
+        );
+    }
+);
+
+
+/* =========================================================
+START
+========================================================= */
+
+updateHud();
+updateQuestUI();
+
+chatPush(
+    'Dispatch',
+    '📡 Dispatch connected.'
+);
+
+startIntroCutscene();
+
+animate();
 
 </script>
 </body>
